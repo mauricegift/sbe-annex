@@ -9,7 +9,7 @@ interface LogoSpinnerProps {
 
 /**
  * A spinning logo component that can replace Loader2 throughout the app.
- * Uses the BBM Annex logo with a rotating animation.
+ * Uses the SBE Annex logo with a rotating animation.
  */
 export const LogoSpinner: React.FC<LogoSpinnerProps> = ({ 
   size = 'sm',
