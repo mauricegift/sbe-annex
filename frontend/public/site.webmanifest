@@ -1,7 +1,7 @@
 {
-  "name": "BBM Annex",
-  "short_name": "BBM Annex",
-  "description": "BBM Annex Learning Platform for Notes and Past Papers",
+  "name": "SBE Annex",
+  "short_name": "SBE Annex",
+  "description": "SBE Annex Learning Platform for Notes and Past Papers",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
