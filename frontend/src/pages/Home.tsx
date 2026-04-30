@@ -175,10 +175,33 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [apiTestimonials, setApiTestimonials] = useState<any[]>([]);
+    const [testimonialForm, setTestimonialForm] = useState({ name: '', role: '', message: '', rating: 5 });
+    const [testimonialPic, setTestimonialPic] = useState<string | null>(null);
+    const [testimonialSubmitting, setTestimonialSubmitting] = useState(false);
+    const [testimonialSuccess, setTestimonialSuccess] = useState(false);
+    const [testimonialError, setTestimonialError] = useState('');
 
   // Page colors for the book animation
-  const pageColors = [
+  // Fetch testimonials from API
+    useEffect(() => {
+      fetch('/api/testimonials')
+        .then(r => r.json())
+        .then(data => {
+          const items = (data.data || []).map((t: any) => ({
+            quote: t.message,
+            name: t.name,
+            role: t.role || 'SBE Student',
+            rating: t.rating || 5,
+            profilePhoto: t.profile_picture || '',
+          }));
+          if (items.length > 0) setApiTestimonials(items);
+        })
+        .catch(() => {});
+    }, []);
+
+      const pageColors = [
     'linear-gradient(145deg, #22c55e, #16a34a)', // Green
     'linear-gradient(145deg, #3b82f6, #2563eb)', // Blue
     'linear-gradient(145deg, #ef4444, #dc2626)', // Red
@@ -286,13 +309,55 @@ const Home: React.FC = () => {
     setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
   };
 
-  // Auto-advance testimonials
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [testimonials.length]);
+  // Merged testimonials: API-fetched first + hardcoded fallback
+    const allTestimonials = apiTestimonials.length > 0 ? [...apiTestimonials, ...testimonials] : testimonials;
+
+    // Testimonials submission handler
+    const handleTestimonialSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setTestimonialSubmitting(true);
+      setTestimonialError('');
+      try {
+        const body: any = {
+          name: testimonialForm.name,
+          role: testimonialForm.role || undefined,
+          message: testimonialForm.message,
+          rating: testimonialForm.rating,
+        };
+        if (testimonialPic) body.profile_picture = testimonialPic;
+        const res = await fetch('/api/testimonials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to submit');
+        setTestimonialSuccess(true);
+        setTestimonialForm({ name: '', role: '', message: '', rating: 5 });
+        setTestimonialPic(null);
+      } catch (err: any) {
+        setTestimonialError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setTestimonialSubmitting(false);
+      }
+    };
+
+    const handleTestimonialPic = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 3 * 1024 * 1024) { setTestimonialError('Image must be under 3MB'); return; }
+      const reader = new FileReader();
+      reader.onload = () => setTestimonialPic(reader.result as string);
+      reader.readAsDataURL(file);
+    };
+
+    // Auto-advance testimonials
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setCurrentTestimonial((prev) => (prev + 1) % allTestimonials.length);
+      }, 5000);
+      return () => clearInterval(timer);
+    }, [allTestimonials.length]);
 
   const navLinks = [
     { name: 'About', href: '/about' },
@@ -538,15 +603,6 @@ const Home: React.FC = () => {
               transition={{ duration: 0.8 }}
               className="text-center lg:text-left space-y-8"
             >
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary/10 border border-primary/20 rounded-full text-primary text-sm font-semibold"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>The #1 Student Resource Platform</span>
-              </motion.div>
               
               <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.1] tracking-tight">
                 <span className="text-foreground">
@@ -919,31 +975,31 @@ const Home: React.FC = () => {
                 <Quote className="w-12 h-12 text-primary/20 mb-6" />
                 
                 <div className="flex justify-center gap-1 mb-8">
-                  {[...Array(testimonials[currentTestimonial].rating)].map((_, i) => (
+                  {[...Array(allTestimonials[currentTestimonial]?.rating)].map((_, i) => (
                     <Star key={i} className="w-6 h-6 text-warning fill-warning" />
                   ))}
                 </div>
                 
                 <blockquote className="text-xl md:text-2xl font-medium text-foreground/90 text-center mb-8 leading-relaxed">
-                  "{testimonials[currentTestimonial].quote}"
+                  "{allTestimonials[currentTestimonial]?.quote}"
                 </blockquote>
                 
                 <div className="flex flex-col items-center">
-                  {testimonials[currentTestimonial].profilePhoto ? (
+                  {allTestimonials[currentTestimonial]?.profilePhoto ? (
                     <img 
-                      src={testimonials[currentTestimonial].profilePhoto} 
-                      alt={testimonials[currentTestimonial].name}
+                      src={allTestimonials[currentTestimonial]?.profilePhoto} 
+                      alt={allTestimonials[currentTestimonial]?.name}
                       className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover mb-4 border-4 border-primary/20"
                     />
                   ) : (
                     <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4">
                       <span className="text-2xl md:text-3xl font-bold text-primary-foreground">
-                        {testimonials[currentTestimonial].name.split(' ').map(n => n[0]).join('')}
+                        {allTestimonials[currentTestimonial]?.name.split(' ').map(n => n[0]).join('')}
                       </span>
                     </div>
                   )}
-                  <p className="font-bold text-lg text-foreground">{testimonials[currentTestimonial].name}</p>
-                  <p className="text-muted-foreground">{testimonials[currentTestimonial].role}</p>
+                  <p className="font-bold text-lg text-foreground">{allTestimonials[currentTestimonial]?.name}</p>
+                  <p className="text-muted-foreground">{allTestimonials[currentTestimonial]?.role}</p>
                 </div>
               </motion.div>
             </AnimatePresence>
@@ -983,7 +1039,143 @@ const Home: React.FC = () => {
         </div>
       </motion.section>
 
-      {/* CTA Section */}
+
+        {/* Share Your Experience - Testimonials Submission */}
+        <motion.section
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="py-20 px-4"
+        >
+          <div className="container mx-auto max-w-2xl">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Share Your <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Experience</span>
+              </h2>
+              <p className="text-muted-foreground text-lg">Help other students by sharing how SBE Annex has helped you</p>
+            </div>
+
+            {testimonialSuccess ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-primary/10 border border-primary/30 rounded-2xl p-8 text-center"
+              >
+                <CheckCircle className="w-16 h-16 text-primary mx-auto mb-4" />
+                <h3 className="text-xl font-bold mb-2 text-foreground">Thank you for your testimonial!</h3>
+                <p className="text-muted-foreground mb-4">Your review has been submitted and is awaiting approval. It will appear on this page once approved.</p>
+                <button
+                  onClick={() => setTestimonialSuccess(false)}
+                  className="text-primary underline text-sm hover:no-underline"
+                >Submit another testimonial</button>
+              </motion.div>
+            ) : (
+              <motion.form
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                onSubmit={handleTestimonialSubmit}
+                className="bg-card border border-border rounded-2xl p-6 md:p-8 space-y-5 shadow-lg"
+              >
+                {testimonialError && (
+                  <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                    {testimonialError}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Your Name *</label>
+                    <input
+                      required
+                      value={testimonialForm.name}
+                      onChange={e => setTestimonialForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="e.g. Jane Doe"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Role / Year <span className="text-muted-foreground">(optional)</span></label>
+                    <input
+                      value={testimonialForm.role}
+                      onChange={e => setTestimonialForm(p => ({ ...p, role: e.target.value }))}
+                      placeholder="e.g. Year 3, Finance"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Your Message *</label>
+                  <textarea
+                    required
+                    value={testimonialForm.message}
+                    onChange={e => setTestimonialForm(p => ({ ...p, message: e.target.value }))}
+                    placeholder="Tell us how SBE Annex has helped your studies..."
+                    rows={4}
+                    minLength={10}
+                    maxLength={600}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">{testimonialForm.message.length}/600</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Rating</label>
+                    <div className="flex gap-1">
+                      {[1,2,3,4,5].map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setTestimonialForm(p => ({ ...p, rating: s }))}
+                          className="focus:outline-none transition-transform hover:scale-110"
+                        >
+                          <Star className={`w-7 h-7 ${s <= testimonialForm.rating ? 'text-warning fill-warning' : 'text-muted-foreground'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-1.5">Profile Picture <span className="text-muted-foreground">(optional)</span></label>
+                    <div className="flex items-center gap-3">
+                      {testimonialPic ? (
+                        <div className="relative">
+                          <img src={testimonialPic} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-primary/30" />
+                          <button type="button" onClick={() => setTestimonialPic(null)} className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full text-white text-xs flex items-center justify-center">×</button>
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                          <User className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <label className="cursor-pointer text-sm text-primary hover:underline">
+                        {testimonialPic ? 'Change photo' : 'Upload photo'}
+                        <input type="file" accept="image/*" onChange={handleTestimonialPic} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={testimonialSubmitting}
+                  className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all font-semibold"
+                >
+                  {testimonialSubmitting ? (
+                    <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting...</span>
+                  ) : (
+                    <span className="flex items-center gap-2"><MessageCircle className="w-4 h-4" />Submit Testimonial</span>
+                  )}
+                </Button>
+              </motion.form>
+            )}
+          </div>
+        </motion.section>
+
+              {/* CTA Section */}
       <motion.section 
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
