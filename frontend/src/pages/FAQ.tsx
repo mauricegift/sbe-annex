@@ -30,8 +30,8 @@ const faqData: FAQItem[] = [
   // Getting Started
   {
     category: "Getting Started",
-    question: "What is BBM Annex?",
-    answer: "BBM Annex is an academic resource sharing platform designed to help students access study materials, notes, past papers, and educational content. It provides a collaborative space where students can share and discover quality educational resources."
+    question: "What is SBE Annex?",
+    answer: "SBE Annex is an academic resource sharing platform designed to help students access study materials, notes, past papers, and educational content. It provides a collaborative space where students can share and discover quality educational resources."
   },
   {
     category: "Getting Started",
@@ -194,7 +194,7 @@ const FAQ: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-foreground">Frequently Asked Questions</h1>
-                <p className="text-muted-foreground">Find answers to common questions about BBM Annex</p>
+                <p className="text-muted-foreground">Find answers to common questions about SBE Annex</p>
               </div>
             </div>
           </motion.div>
