@@ -261,7 +261,7 @@ const Contact: React.FC = () => {
                     </div>
                   </a>
                   <a
-                    href="https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y"
+                    href="https://whatsapp.com/channel/0029VbCpYtZLtOj5LDuj7Q1p"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
