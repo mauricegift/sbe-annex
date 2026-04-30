@@ -28,7 +28,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         <div className="relative overflow-hidden rounded-full">
           <img 
             src="/android-chrome-512x512.png" 
-            alt="BBM Annex" 
+            alt="SBE Annex" 
             className={`${sizeClasses[size]} rounded-full object-cover`}
           />
           {/* Shimmer overlay */}
