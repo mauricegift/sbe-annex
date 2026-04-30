@@ -31,20 +31,7 @@ class UserCreate(BaseModel):
     verification_method: VerificationMethod
     phone_number: Optional[str] = Field(None, pattern=r"^(07|01)[0-9]{8}$")
 
-    @validator("password")
-    def validate_password_strength(cls, v):
-        import re
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not re.search(r"[0-9]", v):
-            raise ValueError("Password must contain at least one number")
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
-            raise ValueError("Password must contain at least one special character")
-        return v
+
 
     @model_validator(mode="after")
     def validate_phone_for_sms(cls, values):
@@ -69,9 +56,11 @@ class UserProfile(BaseModel):
 
     @validator("profile_picture")
     def validate_profile_picture(cls, v):
-        if v and not v.startswith(("http://", "https://", "data:image/")):
-            raise ValueError("Profile picture must be a valid URL or base64 data URI")
+        if v and not v.startswith(("http://", "https://")):
+            raise ValueError("Profile picture must be a valid URL")
         return v
+
+
 
 
 class UpdatePhoneRequest(BaseModel):
@@ -142,3 +131,19 @@ class TokenData(BaseModel):
 class AdminUserUpdate(BaseModel):
     is_admin: Optional[bool] = None
     is_disabled: Optional[bool] = None
+
+
+class ChangeEmailRequest(BaseModel):
+    new_email: EmailStr
+
+
+class ChangePhoneRequest(BaseModel):
+    new_phone: str = Field(..., pattern=r"^(07|01)[0-9]{8}$")
+
+
+class ConfirmContactCodeRequest(BaseModel):
+    code: str
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    notify_on_upload_decision: bool
