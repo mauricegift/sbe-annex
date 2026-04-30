@@ -687,7 +687,7 @@ const Home: React.FC = () => {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="w-full flex justify-center items-center lg:-mt-16"
+              className="w-full flex justify-center items-center lg:-mt-32"
             >
               <div className="relative flex justify-center items-center">
                 {/* Glow effect behind book */}
