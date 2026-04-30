@@ -1210,81 +1210,71 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-8 space-y-4 sm:space-y-6">
-      <div className="relative rounded-3xl overflow-hidden mb-8">
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 z-0"></div>
-        <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10 z-0"></div>
-        <div className="relative z-10 p-6 sm:p-10">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
-            <div className="text-center sm:text-left">
-              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">Admin Dashboard</h1>
-              <p className="text-slate-300 mt-1 text-sm sm:text-base">Manage users, content, and platform settings</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="self-center sm:self-auto bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white transition-all backdrop-blur-md"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+            <Calendar className="w-4 h-4" />
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+            Admin Dashboard
+          </h1>
+          <p className="text-muted-foreground text-sm">Manage users, content, and platform settings</p>
+        </div>
+        <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="shrink-0 mt-1">
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
 
-          {/* Admin Profile Card */}
-          {user && (
-            <div className="w-full p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-600/90 via-teal-500/90 to-cyan-600/90 shadow-2xl backdrop-blur-md border border-white/20 overflow-hidden relative animate-fade-in group">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                {/* Admin Avatar */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-white/20 border-2 border-white/40 flex-shrink-0 shadow-inner">
-                  {user.profile_picture ? (
-                    <img 
-                      src={user.profile_picture} 
-                      alt={user.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-3xl">
-                      {user.name?.charAt(0)?.toUpperCase() || 'A'}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col items-start flex-1">
-                  <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-                    <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">{user.name}</span>
-                    <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm shadow-sm px-2.5 py-0.5">Admin</Badge>
+      {/* Admin Profile Info Card */}
+      {user && (
+        <Card className="border border-border/60 bg-gradient-to-r from-primary/5 to-primary/10 overflow-hidden">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-primary/10 border-2 border-primary/20 flex-shrink-0">
+                {user.profile_picture ? (
+                  <img src={user.profile_picture} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-primary font-bold text-2xl">
+                    {user.name?.charAt(0)?.toUpperCase() || 'A'}
                   </div>
-                  <p className="text-sm font-medium text-white/90 mb-3 flex items-center gap-1.5">
-                    <span className="opacity-75">@</span>{user.username} <span className="opacity-50 mx-1">•</span> {user.email}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5 bg-black/20 rounded-full px-3 py-1 text-xs text-white font-medium backdrop-blur-md border border-white/10">
-                      <BookOpen className="w-3.5 h-3.5 opacity-80" />
-                      Year {user.year_of_study}
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-black/20 rounded-full px-3 py-1 text-xs text-white font-medium backdrop-blur-md border border-white/10">
-                      <FileText className="w-3.5 h-3.5 opacity-80" />
-                      Semester {user.semester_of_study}
-                    </div>
-                    {user.specialization && (
-                      <div className="flex items-center gap-1.5 bg-black/20 rounded-full px-3 py-1 text-xs text-white font-medium backdrop-blur-md border border-white/10">
-                        <GraduationCap className="w-3.5 h-3.5 opacity-80" />
-                        {user.specialization}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 bg-black/20 rounded-full px-3 py-1 text-xs text-white font-medium backdrop-blur-md border border-white/10">
-                      <Check className="w-3.5 h-3.5 text-green-300" />
-                      Verified
-                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse ml-0.5 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
-                    </div>
-                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="font-bold text-lg text-foreground">{user.name}</span>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                    {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                  </Badge>
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Check className="w-3 h-3" />
+                    Verified
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse ml-0.5"></span>
+                  </span>
                 </div>
+                <p className="text-sm text-muted-foreground truncate">@{user.username} · {user.email}</p>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+                <BookOpen className="w-3.5 h-3.5 text-primary" />
+                Year {user.year_of_study}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                Semester {user.semester_of_study}
+              </span>
+              {user.specialization && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+                  <GraduationCap className="w-3.5 h-3.5 text-primary" />
+                  {user.specialization}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar">
