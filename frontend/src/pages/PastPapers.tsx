@@ -611,23 +611,29 @@ const PastPapersUpload: React.FC = () => {
   };
 
   const handleFileSelect = (file: File) => {
-    // Validate file type
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: "Invalid file type",
-        description: "Please select a valid file (PDF, DOC, DOCX, JPEG, PNG, WEBP)",
-        variant: "destructive",
-      });
-      return false;
-    }
+    // Validate file type — use extension fallback for mobile browsers
+      const extTypeMap: Record<string, string> = {
+        pdf: 'application/pdf', doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+      };
+      const fileExt = (file.name.split('.').pop() || '').toLowerCase();
+      const effectiveMime = (file.type && file.type !== 'application/octet-stream')
+        ? file.type : (extTypeMap[fileExt] || file.type);
+      const allowedTypes = [
+        'application/pdf', 'application/x-pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      ];
+      const validExts = Object.keys(extTypeMap);
+      if (!allowedTypes.includes(effectiveMime) && !validExts.includes(fileExt)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a valid file (PDF, DOC, DOCX, JPG, PNG, WEBP)",
+          variant: "destructive",
+        });
+        return false;
+      }
     // Validate file size (max 20MB)
     if (file.size > 20 * 1024 * 1024) {
       toast({
@@ -891,10 +897,17 @@ const PastPapersUpload: React.FC = () => {
       
       let thumbnailUrl = '';
       if (selectedThumbnail) {
-        console.log('Starting thumbnail upload...', selectedThumbnail.name);
-        thumbnailUrl = await uploadThumbnailToStorage();
-        console.log('Thumbnail uploaded successfully:', thumbnailUrl);
-      }
+          try {
+            thumbnailUrl = await uploadThumbnailToStorage();
+            console.log('Thumbnail uploaded successfully:', thumbnailUrl);
+          } catch (thumbErr: any) {
+            console.warn('Thumbnail upload failed, continuing without thumbnail:', thumbErr?.message);
+            toast({
+              title: "Note: Thumbnail skipped",
+              description: "Thumbnail upload failed but your paper will still be submitted.",
+            });
+          }
+        }
 
       // Submit to backend
       console.log('Submitting to backend API...');
