@@ -9,10 +9,11 @@ SECRET_KEY: str = os.getenv("SECRET_KEY", "sbe-annex-secret-please-change-me")
 ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
 
 
-def create_email_token(email: str, token_type: str, expires_minutes: int = 10) -> str:
+def create_email_token(email: str, token_type: str, expires_minutes: int = 10, extra: dict | None = None) -> str:
     """
     Create a short-lived token for email-based operations.
-    token_type: 'verify' | 'reset'
+    token_type: 'verify' | 'reset' | 'delete' | 'change_email'
+    extra: optional extra fields merged into the payload (e.g. {'new_email': '...'})
     """
     payload = {
         "email": email,
@@ -20,6 +21,8 @@ def create_email_token(email: str, token_type: str, expires_minutes: int = 10) -
         "exp": datetime.utcnow() + timedelta(minutes=expires_minutes),
         "iat": datetime.utcnow(),
     }
+    if extra:
+        payload.update(extra)
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
