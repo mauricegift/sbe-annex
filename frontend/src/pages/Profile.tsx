@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from '../lib/toast';
-import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle, Check, Clock, Calendar, Shield } from 'lucide-react';
+import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle, Check, Clock, Calendar, Shield, Mail, Phone, Bell, BellOff, X, Send } from 'lucide-react';
 import { ProfileSkeleton } from '../components/PageSkeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import Cropper from 'react-easy-crop';
@@ -51,6 +51,21 @@ const Profile: React.FC = () => {
     confirmPassword: '',
   });
 
+  // Email change state
+  const [emailChangeStep, setEmailChangeStep] = useState<'idle'|'form'|'sent'>('idle');
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+
+  // Phone change state
+  const [phoneChangeStep, setPhoneChangeStep] = useState<'idle'|'form'|'otp'>('idle');
+  const [newPhoneInput, setNewPhoneInput] = useState('');
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [phoneChangeLoading, setPhoneChangeLoading] = useState(false);
+
+  // Notification preferences
+  const [notifyOnUpload, setNotifyOnUpload] = useState<boolean>(true);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+
   // Initialize form data when user data is available
   useEffect(() => {
     if (user) {
@@ -61,11 +76,33 @@ const Profile: React.FC = () => {
         group: (user as any)?.group || '',
         specialization: user?.specialization || '',
       });
+      setNotifyOnUpload((user as any)?.notify_on_upload_decision !== false);
     }
   }, [user]);
 
   useEffect(() => {
     groupsAPI.getGroups().then(r => setGroups(r.data || [])).catch(() => {});
+  }, []);
+
+  // Handle URL params from email-change confirmation redirect
+  useEffect(() => {
+    const emailChanged = searchParams.get('email_changed');
+    const emailChangeErr = searchParams.get('email_change');
+    if (emailChanged === 'true') {
+      toast({ title: 'Email updated', description: 'Your email address has been changed successfully.' });
+      setEmailChangeStep('idle');
+      handleRefresh();
+      setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('email_changed'); return p; });
+    } else if (emailChangeErr) {
+      const msgs: Record<string,string> = {
+        expired: 'The email change link has expired. Please request a new one.',
+        invalid: 'The email change link is invalid.',
+        taken: 'That email address is already taken by another account.',
+        mismatch: 'Email change request mismatch. Please try again.',
+      };
+      toast({ title: 'Email change failed', description: msgs[emailChangeErr] || 'Email change failed.', variant: 'destructive' });
+      setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('email_change'); return p; });
+    }
   }, []);
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -151,6 +188,67 @@ const Profile: React.FC = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // ── Email change handlers ─────────────────────────────────────────────────────
+  const handleRequestEmailChange = async () => {
+    if (!newEmailInput.trim()) return;
+    setEmailChangeLoading(true);
+    try {
+      await userAPI.requestEmailChange(newEmailInput.trim());
+      setEmailChangeStep('sent');
+      toast({ title: 'Confirmation email sent', description: `Check ${newEmailInput} for a confirmation link. Click it to complete the change.` });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to send confirmation email', variant: 'destructive' });
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  // ── Phone change handlers ─────────────────────────────────────────────────────
+  const handleRequestPhoneChange = async () => {
+    if (!newPhoneInput.trim()) return;
+    setPhoneChangeLoading(true);
+    try {
+      await userAPI.requestPhoneChange(newPhoneInput.trim());
+      setPhoneChangeStep('otp');
+      toast({ title: 'Code sent', description: `A 6-digit verification code has been sent to ${newPhoneInput}.` });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to send verification code', variant: 'destructive' });
+    } finally {
+      setPhoneChangeLoading(false);
+    }
+  };
+
+  const handleConfirmPhoneChange = async () => {
+    if (!phoneOtpCode.trim()) return;
+    setPhoneChangeLoading(true);
+    try {
+      const res = await userAPI.confirmPhoneChange(phoneOtpCode.trim());
+      updateUser(res.data);
+      setPhoneChangeStep('idle');
+      setNewPhoneInput('');
+      setPhoneOtpCode('');
+      toast({ title: 'Phone updated', description: 'Your phone number has been changed successfully.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Invalid or expired code', variant: 'destructive' });
+    } finally {
+      setPhoneChangeLoading(false);
+    }
+  };
+
+  // ── Notification preference handler ──────────────────────────────────────────
+  const handleNotificationToggle = async (value: boolean) => {
+    setNotifyLoading(true);
+    try {
+      await userAPI.updateNotificationPreferences(value);
+      setNotifyOnUpload(value);
+      toast({ title: 'Preferences saved', description: value ? 'You will receive upload decision notifications.' : 'Upload notifications are now off.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to save preferences', variant: 'destructive' });
+    } finally {
+      setNotifyLoading(false);
     }
   };
 
@@ -501,26 +599,88 @@ const Profile: React.FC = () => {
                   />
                 </div>
                 
+                {/* Email address with change flow */}
                 <div className="space-y-3">
-                  <Label htmlFor="email" className="text-sm font-medium text-foreground/80">Email Address</Label>
-                  <Input
-                    id="email"
-                    value={user?.email}
-                    disabled
-                    className="bg-muted/50 text-muted-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Email cannot be changed</p>
+                  <Label className="text-sm font-medium text-foreground/80 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-primary" /> Email Address
+                  </Label>
+                  {emailChangeStep === 'idle' && (
+                    <>
+                      <div className="flex gap-2">
+                        <Input value={user?.email} disabled className="bg-muted/50 text-muted-foreground flex-1" />
+                        <Button size="sm" variant="outline" onClick={() => setEmailChangeStep('form')} className="shrink-0">Change</Button>
+                      </div>
+                      {(user as any)?.pending_email && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Pending change to: <strong>{(user as any).pending_email}</strong>
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {emailChangeStep === 'form' && (
+                    <div className="space-y-2 p-3 border border-primary/30 rounded-lg bg-primary/5">
+                      <p className="text-xs text-muted-foreground">Enter your new email address. A confirmation link will be sent to it.</p>
+                      <div className="flex gap-2">
+                        <Input placeholder="new@email.com" value={newEmailInput} onChange={e => setNewEmailInput(e.target.value)} type="email" className="flex-1" />
+                        <Button size="sm" onClick={handleRequestEmailChange} disabled={emailChangeLoading || !newEmailInput.trim()}>
+                          {emailChangeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setEmailChangeStep('idle'); setNewEmailInput(''); }}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {emailChangeStep === 'sent' && (
+                    <div className="p-3 border border-emerald-300 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800">
+                      <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                        ✓ Confirmation link sent to <strong>{newEmailInput}</strong>. Click the link in that email to complete the change.
+                      </p>
+                      <button onClick={() => setEmailChangeStep('idle')} className="text-xs text-muted-foreground mt-1 hover:underline">Dismiss</button>
+                    </div>
+                  )}
                 </div>
 
+                {/* Phone number with change flow */}
                 <div className="space-y-3">
-                  <Label htmlFor="phone" className="text-sm font-medium text-foreground/80">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={user?.phone_number || 'Not set'}
-                    disabled
-                    className="bg-muted/50 text-muted-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground/70">Phone number cannot be changed</p>
+                  <Label className="text-sm font-medium text-foreground/80 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-primary" /> Phone Number
+                  </Label>
+                  {phoneChangeStep === 'idle' && (
+                    <div className="flex gap-2">
+                      <Input value={user?.phone_number || 'Not set'} disabled className="bg-muted/50 text-muted-foreground flex-1" />
+                      <Button size="sm" variant="outline" onClick={() => setPhoneChangeStep('form')} className="shrink-0">Change</Button>
+                    </div>
+                  )}
+                  {phoneChangeStep === 'form' && (
+                    <div className="space-y-2 p-3 border border-primary/30 rounded-lg bg-primary/5">
+                      <p className="text-xs text-muted-foreground">Enter your new phone number (07xx or 01xx). A verification code will be sent to it.</p>
+                      <div className="flex gap-2">
+                        <Input placeholder="07XXXXXXXX" value={newPhoneInput} onChange={e => setNewPhoneInput(e.target.value)} type="tel" className="flex-1" />
+                        <Button size="sm" onClick={handleRequestPhoneChange} disabled={phoneChangeLoading || !newPhoneInput.trim()}>
+                          {phoneChangeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setPhoneChangeStep('idle'); setNewPhoneInput(''); }}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {phoneChangeStep === 'otp' && (
+                    <div className="space-y-2 p-3 border border-primary/30 rounded-lg bg-primary/5">
+                      <p className="text-xs text-muted-foreground">Enter the 6-digit code sent to <strong>{newPhoneInput}</strong>.</p>
+                      <div className="flex gap-2">
+                        <Input placeholder="000000" value={phoneOtpCode} onChange={e => setPhoneOtpCode(e.target.value)} maxLength={6} className="flex-1 tracking-widest text-center" />
+                        <Button size="sm" onClick={handleConfirmPhoneChange} disabled={phoneChangeLoading || phoneOtpCode.length < 6}>
+                          {phoneChangeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                          Confirm
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setPhoneChangeStep('idle'); setPhoneOtpCode(''); setNewPhoneInput(''); }}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -772,6 +932,44 @@ const Profile: React.FC = () => {
                   </div>
                   <Button variant="outline" disabled className="w-full sm:w-auto">
                     Coming Soon
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notification Preferences */}
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-primary" />
+                  Email Notifications
+                </CardTitle>
+                <CardDescription>Control which emails you receive from the platform</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border bg-card">
+                  <div className="mb-4 sm:mb-0 flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${notifyOnUpload ? 'bg-primary/10' : 'bg-muted'}`}>
+                      {notifyOnUpload ? <Bell className="w-4 h-4 text-primary" /> : <BellOff className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Upload decisions</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {notifyOnUpload
+                          ? 'You will be emailed when your notes or past papers are approved or rejected, including any admin remarks.'
+                          : 'You will not receive email notifications for upload decisions.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant={notifyOnUpload ? 'outline' : 'secondary'}
+                    size="sm"
+                    disabled={notifyLoading}
+                    onClick={() => handleNotificationToggle(!notifyOnUpload)}
+                    className="w-full sm:w-auto shrink-0"
+                  >
+                    {notifyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                    {notifyOnUpload ? 'Turn off' : 'Turn on'}
                   </Button>
                 </div>
               </CardContent>
