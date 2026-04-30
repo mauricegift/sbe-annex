@@ -134,12 +134,12 @@ const Navbar: React.FC = () => {
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-primary/20">
               <img 
                 src="/android-chrome-512x512.png" 
-                alt="BBM Annex Logo" 
+                alt="SBE Annex Logo" 
                 className="w-full h-full object-cover"
               />
             </div>
             <span className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate uppercase">
-              BBM ANNEX
+              SBE ANNEX
             </span>
           </Link>
 
