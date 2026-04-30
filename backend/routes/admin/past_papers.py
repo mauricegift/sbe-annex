@@ -7,7 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from db.database import db
 from helpers.auth import get_admin_user
 from models.document import DocumentUpdate, DocumentStatusUpdate, Status
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
@@ -37,6 +39,25 @@ async def update_paper_status(
         {"id": paper_id},
         {"$set": {"status": update.status, "feedback": update.feedback, "updated_at": datetime.utcnow()}},
     )
+
+    # Notify uploader if they have notifications enabled
+    if update.status in (Status.APPROVED, Status.REJECTED):
+        uploader = await db.users.find_one({"id": paper.get("uploaded_by")})
+        if uploader and uploader.get("notify_on_upload_decision", True):
+            try:
+                from utils.email_service import send_upload_notification
+                decision = "approved" if update.status == Status.APPROVED else "rejected"
+                await send_upload_notification(
+                    email=uploader["email"],
+                    username=uploader["username"],
+                    doc_type="past paper",
+                    title=paper.get("course_title", paper.get("title", "your past paper")),
+                    decision=decision,
+                    feedback=update.feedback or "",
+                )
+            except Exception as exc:
+                logger.warning(f"Upload notification failed for paper {paper_id}: {exc}")
+
     return {"message": f"Past paper {update.status} successfully."}
 
 
