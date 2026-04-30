@@ -14,11 +14,11 @@ const Footer: React.FC = () => {
             <div className="flex items-center gap-3">
               <img 
                 src="/android-chrome-192x192.png" 
-                alt="BBM Annex Logo" 
+                alt="SBE Annex Logo" 
                 className="w-10 h-10 rounded-full"
               />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                BBM Annex
+                SBE Annex
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -95,11 +95,11 @@ const Footer: React.FC = () => {
             <ul className="space-y-2">
               <li>
                 <a 
-                  href="mailto:bbm@giftedtech.co.ke" 
+                  href="mailto:sbe@giftedtech.co.ke" 
                   className="text-sm text-muted-foreground hover:text-primary hover:translate-x-1 transition-all duration-200 flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" />
-                  bbm@giftedtech.co.ke
+                  sbe@giftedtech.co.ke
                 </a>
               </li>
               <li>
@@ -158,7 +158,7 @@ const Footer: React.FC = () => {
         <div className="mt-8 pt-6 border-t border-border/50">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024-{currentYear} BBM Annex. All rights reserved.
+              © 2024-{currentYear} SBE Annex. All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               Made with <Heart className="w-4 h-4 text-destructive fill-destructive" /> for students
