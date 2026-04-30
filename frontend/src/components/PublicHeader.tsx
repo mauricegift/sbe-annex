@@ -42,7 +42,7 @@ const PublicHeader: React.FC = () => {
   return (
     <>
       {/* Navigation Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+      <header className="sticky top-0 z-50 bg-background/60 backdrop-blur-xl border-b border-border/40 shadow-sm transition-all duration-300">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
