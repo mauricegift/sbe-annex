@@ -9,8 +9,8 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 SMS_API_KEY: str = os.getenv("SMS_API_KEY", "")
-SMS_API_URL: str = os.getenv("SMS_API_URL", "https://sms.ots.co.ke/api/v3")
-SMS_SENDER_ID: str = os.getenv("SMS_SENDER_ID", "PROCALL")
+SMS_API_URL: str = os.getenv("SMS_API_URL", "")
+SMS_SENDER_ID: str = os.getenv("SMS_SENDER_ID", "")
 APP_NAME: str = os.getenv("APP_NAME", "Sbe Annex")
 
 
