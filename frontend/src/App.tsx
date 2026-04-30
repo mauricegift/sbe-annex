@@ -26,7 +26,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="dark" storageKey="bbm-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="sbe-ui-theme">
       <AuthProvider>
         <TooltipProvider>
           <ToastContainer
