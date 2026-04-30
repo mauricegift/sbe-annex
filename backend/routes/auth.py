@@ -39,7 +39,7 @@ import uuid
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://bbm.giftedtech.co.ke")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 
 
 # ── Check first user ──────────────────────────────────────────────────────────────
