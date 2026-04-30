@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { userAPI, authAPI, profileAPI } from '../lib/api';
 
@@ -9,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from '../lib/toast';
-import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw } from 'lucide-react';
+import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle } from 'lucide-react';
 import { ProfileSkeleton } from '../components/PageSkeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import Cropper from 'react-easy-crop';
@@ -25,7 +26,15 @@ const Profile: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState('info');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab');
+    return ['info','status','security','danger'].includes(t||'') ? t! : 'info';
+  });
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', value); return p; });
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [groups, setGroups] = useState<{id:string;code:string;name:string;specializations:string[]}[]>([]);
@@ -308,330 +317,346 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-4xl">
-      <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Profile Settings</h1>
-            <p className="text-muted-foreground">Manage your account settings and preferences</p>
-          </div>
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+    <div className="container mx-auto px-4 py-6 sm:py-10 max-w-5xl space-y-8">
+      {/* Hero Section */}
+      <div className="relative rounded-3xl overflow-hidden shadow-sm border bg-card">
+        <div className="h-32 sm:h-48 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 relative">
+          <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-20"></div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={isRefreshing}
+            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 border-white/20 text-white backdrop-blur-sm"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
+        
+        <div className="px-6 sm:px-10 pb-8 relative">
+          <div className="flex flex-col sm:flex-row gap-6 sm:items-end -mt-16 sm:-mt-20 mb-6">
+            <div className="relative group">
+              <Avatar className="h-32 w-32 sm:h-40 sm:w-40 border-4 border-background shadow-xl">
+                <AvatarImage src={user?.profile_picture} alt={user?.name} className="object-cover" />
+                <AvatarFallback className="text-4xl bg-primary/10 text-primary font-bold">
+                  {user?.name?.charAt(0)?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                size="icon"
+                variant="secondary"
+                className="absolute bottom-2 right-2 h-10 w-10 rounded-full shadow-lg border-2 border-background opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  logMobileUploadDebug('Profile pic button click');
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                    if (isIOSDevice()) {
+                      setTimeout(() => fileInputRef.current?.click(), 100);
+                    } else {
+                      fileInputRef.current.click();
+                    }
+                  }
+                }}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePicSelect}
+                className="hidden"
+              />
+            </div>
+            
+            <div className="flex-1 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{user?.name}</h1>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-sm w-fit ${
+                  user?.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
+                  user?.role === 'admin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
+                  'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
+                }`}>
+                  {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'Student'}
+                </span>
+              </div>
+              <p className="text-muted-foreground mt-1 font-medium text-lg">@{user?.username}</p>
+            </div>
+            
+            <div className="flex gap-3 pb-2 w-full sm:w-auto">
+              {!isEditing ? (
+                <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto shadow-sm">
+                  Edit Profile
+                </Button>
+              ) : (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button variant="outline" onClick={() => {
+                    setIsEditing(false);
+                    setFormData({
+                      name: user?.name || '',
+                      year_of_study: user?.year_of_study || 1,
+                      semester_of_study: user?.semester_of_study || 1,
+                      group: (user as any)?.group || '',
+                      specialization: user?.specialization || '',
+                    });
+                  }} className="flex-1 sm:flex-none">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} disabled={isLoading} className="flex-1 sm:flex-none shadow-sm">
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Tabs Navigation */}
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="info" onClick={() => setActiveTab('info')} className="text-xs sm:text-sm">
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <span className="hidden sm:inline">Information</span>
-                <span className="sm:hidden">Info</span>
+      {/* Tabs Navigation */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6">
+        <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar">
+          <TabsList className="inline-flex w-max sm:w-full sm:grid sm:grid-cols-4 h-auto gap-2 bg-muted/50 p-1.5 rounded-xl border border-border/50">
+            <TabsTrigger value="info" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
+              <div className="flex items-center gap-2 font-medium">
+                <User className="w-4 h-4" />
+                <span>Information</span>
               </div>
             </TabsTrigger>
-            <TabsTrigger value="status" onClick={() => setActiveTab('status')} className="text-xs sm:text-sm">
-              <div className="flex items-center space-x-1 sm:space-x-2">
+            <TabsTrigger value="status" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
+              <div className="flex items-center gap-2 font-medium">
+                <Award className="w-4 h-4" />
                 <span>Status</span>
               </div>
             </TabsTrigger>
-            <TabsTrigger value="security" onClick={() => setActiveTab('security')} className="text-xs sm:text-sm">
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <Key className="h-3 w-3 sm:h-4 sm:w-4" />
+            <TabsTrigger value="security" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
+              <div className="flex items-center gap-2 font-medium">
+                <Key className="w-4 h-4" />
                 <span>Security</span>
               </div>
             </TabsTrigger>
-            <TabsTrigger value="danger" onClick={() => setActiveTab('danger')} className="text-xs sm:text-sm">
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <ShieldAlert className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Danger</span>
-                <span className="sm:hidden">Danger</span>
+            <TabsTrigger value="danger" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-red-500/10 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400 data-[state=active]:shadow-sm transition-all hover:text-red-600">
+              <div className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Danger Zone</span>
               </div>
             </TabsTrigger>
           </TabsList>
+        </div>
 
-          {/* Information Tab */}
-          <TabsContent value="info">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>Update your profile information</CardDescription>
-                  </div>
-                  {!isEditing ? (
-                    <Button onClick={() => setIsEditing(true)}>
-                      Edit Profile
-                    </Button>
+        {/* Information Tab */}
+        <TabsContent value="info" className="mt-0">
+          <Card className="border shadow-sm overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-b border-border/50 pb-6">
+              <CardTitle className="text-xl">Personal Information</CardTitle>
+              <CardDescription>Update your academic and personal details</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="space-y-3">
+                  <Label htmlFor="name" className="text-sm font-medium text-foreground/80">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={isEditing ? formData.name : user?.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    disabled={!isEditing}
+                    className={`transition-all ${isEditing ? 'border-primary ring-1 ring-primary/20' : 'bg-muted/30'}`}
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground/80">Email Address</Label>
+                  <Input
+                    id="email"
+                    value={user?.email}
+                    disabled
+                    className="bg-muted/50 text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground/70">Email cannot be changed</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="phone" className="text-sm font-medium text-foreground/80">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={user?.phone_number || 'Not set'}
+                    disabled
+                    className="bg-muted/50 text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground/70">Phone number cannot be changed</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="username" className="text-sm font-medium text-foreground/80">Username</Label>
+                  <Input
+                    id="username"
+                    value={user?.username}
+                    disabled
+                    className="bg-muted/50 text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground/70">Username cannot be changed</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="year" className="text-sm font-medium text-foreground/80">Year of Study</Label>
+                  <Select
+                    value={isEditing ? formData.year_of_study.toString() : user?.year_of_study?.toString()}
+                    onValueChange={(value) => handleInputChange('year_of_study', parseInt(value))}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className={isEditing ? 'border-primary ring-1 ring-primary/20' : 'bg-muted/30'}>
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Year 1</SelectItem>
+                      <SelectItem value="2">Year 2</SelectItem>
+                      <SelectItem value="3">Year 3</SelectItem>
+                      <SelectItem value="4">Year 4</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="semester" className="text-sm font-medium text-foreground/80">Semester</Label>
+                  <Select
+                    value={isEditing ? formData.semester_of_study.toString() : user?.semester_of_study?.toString()}
+                    onValueChange={(value) => handleInputChange('semester_of_study', parseInt(value))}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className={isEditing ? 'border-primary ring-1 ring-primary/20' : 'bg-muted/30'}>
+                      <SelectValue placeholder="Select semester" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Semester 1</SelectItem>
+                      <SelectItem value="2">Semester 2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="group" className="text-sm font-medium text-foreground/80">Study Group</Label>
+                  {isEditing && groups.length > 0 ? (
+                    <Select
+                      value={formData.group}
+                      onValueChange={(value) => {
+                        handleInputChange('group', value);
+                        handleInputChange('specialization', '');
+                      }}
+                    >
+                      <SelectTrigger className="border-primary ring-1 ring-primary/20"><SelectValue placeholder="Select study group" /></SelectTrigger>
+                      <SelectContent>
+                        {groups.map(g => (
+                          <SelectItem key={g.id} value={g.code}>{g.name} ({g.code})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
-                    <div className="space-x-2">
-                    <Button variant="outline" onClick={() => {
-                        setIsEditing(false);
-                        setFormData({
-                          name: user?.name || '',
-                          year_of_study: user?.year_of_study || 1,
-                          semester_of_study: user?.semester_of_study || 1,
-                          group: (user as any)?.group || '',
-                          specialization: user?.specialization || '',
-                        });
-                      }}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSave} disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Changes
-                      </Button>
-                    </div>
+                    <Input
+                      value={isEditing
+                        ? (groups.length === 0 ? 'No groups added yet — ask admin' : (formData.group || 'Not set'))
+                        : ((user as any)?.group || 'Not set')}
+                      disabled
+                      className="bg-muted/50 text-muted-foreground"
+                    />
                   )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Profile Picture */}
-                <div className="flex items-center space-x-6">
-                  <div className="relative">
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={user?.profile_picture} alt={user?.name} />
-                      <AvatarFallback className="text-lg bg-primary text-primary-foreground">
-                        {user?.name?.charAt(0)?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full touch-manipulation"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        logMobileUploadDebug('Profile pic button click');
-                        if (fileInputRef.current) {
-                          fileInputRef.current.value = '';
-                          // Small delay for iOS
-                          if (isIOSDevice()) {
-                            setTimeout(() => fileInputRef.current?.click(), 100);
-                          } else {
-                            fileInputRef.current.click();
-                          }
-                        }
-                      }}
-                      disabled={isUploading}
-                    >
-                      {isUploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+
+                {/* Specialization */}
+                {(() => {
+                  const selectedGroup = groups.find(g => g.code === (isEditing ? formData.group : (user as any)?.group));
+                  const specs = selectedGroup?.specializations || [];
+                  const displaySpec = isEditing ? formData.specialization : (user?.specialization || '');
+                  if (!isEditing && !displaySpec) return null;
+                  return (
+                    <div className="space-y-3">
+                      <Label htmlFor="specialization" className="text-sm font-medium text-foreground/80">Specialization</Label>
+                      {isEditing && specs.length > 0 ? (
+                        <Select
+                          value={formData.specialization}
+                          onValueChange={(value) => handleInputChange('specialization', value)}
+                        >
+                          <SelectTrigger className="border-primary ring-1 ring-primary/20"><SelectValue placeholder="Select specialization" /></SelectTrigger>
+                          <SelectContent>
+                            {specs.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       ) : (
-                        <Camera className="h-4 w-4" />
+                        <Input
+                          value={displaySpec || 'Not set'}
+                          disabled
+                          className="bg-muted/50 text-muted-foreground"
+                        />
                       )}
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleProfilePicSelect}
-                      className="hidden"
-                    />
+                    </div>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Account Status Tab */}
+        <TabsContent value="status" className="mt-0">
+          <Card className="border shadow-sm">
+            <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 border-b border-border/50 pb-6">
+              <CardTitle className="text-xl">Account Status</CardTitle>
+              <CardDescription>Your verification and standing in the platform</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between p-5 rounded-xl border bg-card hover:bg-accent/5 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Email Verification</p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-lg">{user?.is_verified ? 'Verified' : 'Pending'}</span>
+                      {user?.is_verified && <Check className="w-5 h-5 text-emerald-500" />}
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="font-medium">{user?.name}</h3>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
-                    <p className="text-sm text-muted-foreground">@{user?.username}</p>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                      user?.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
-                      user?.role === 'admin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
-                      'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full ${user?.is_verified ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                    <div className={`w-3 h-3 rounded-full shadow-sm ${user?.is_verified ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-5 rounded-xl border bg-card hover:bg-accent/5 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Platform Role</p>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold shadow-sm ${
+                      user?.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
+                      user?.role === 'admin' ? 'bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
+                      'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                     }`}>
-                      {user?.role === 'super_admin' ? '⭐ Super Admin' : user?.role === 'admin' ? '🛡 Admin' : '🎓 Student'}
+                      {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'Student'}
                     </span>
                   </div>
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800">
+                    <Award className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                  </div>
                 </div>
-
-                {/* Form Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={isEditing ? formData.name : user?.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      value={user?.email}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">Email cannot be changed</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={user?.phone_number || 'Not set'}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">Phone number cannot be changed</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={user?.username}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">Username cannot be changed</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="year">Year of Study</Label>
-                    <Select
-                      value={isEditing ? formData.year_of_study.toString() : user?.year_of_study?.toString()}
-                      onValueChange={(value) => handleInputChange('year_of_study', parseInt(value))}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Year 1</SelectItem>
-                        <SelectItem value="2">Year 2</SelectItem>
-                        <SelectItem value="3">Year 3</SelectItem>
-                        <SelectItem value="4">Year 4</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="semester">Semester</Label>
-                    <Select
-                      value={isEditing ? formData.semester_of_study.toString() : user?.semester_of_study?.toString()}
-                      onValueChange={(value) => handleInputChange('semester_of_study', parseInt(value))}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select semester" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Semester 1</SelectItem>
-                        <SelectItem value="2">Semester 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Study Group - dynamic from admin */}
-                  <div className="space-y-2">
-                    <Label htmlFor="group">Study Group</Label>
-                    {isEditing && groups.length > 0 ? (
-                      <Select
-                        value={formData.group}
-                        onValueChange={(value) => {
-                          handleInputChange('group', value);
-                          handleInputChange('specialization', '');
-                        }}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Select study group" /></SelectTrigger>
-                        <SelectContent>
-                          {groups.map(g => (
-                            <SelectItem key={g.id} value={g.code}>{g.name} ({g.code})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        value={isEditing
-                          ? (groups.length === 0 ? 'No groups added yet — ask admin' : (formData.group || 'Not set'))
-                          : ((user as any)?.group || 'Not set')}
-                        disabled
-                        className="bg-muted"
-                      />
-                    )}
-                  </div>
-
-                  {/* Specialization - dynamic from selected group */}
-                  {(() => {
-                    const selectedGroup = groups.find(g => g.code === (isEditing ? formData.group : (user as any)?.group));
-                    const specs = selectedGroup?.specializations || [];
-                    const displaySpec = isEditing ? formData.specialization : (user?.specialization || '');
-                    if (!isEditing && !displaySpec) return null;
-                    return (
-                      <div className="space-y-2">
-                        <Label htmlFor="specialization">Specialization</Label>
-                        {isEditing && specs.length > 0 ? (
-                          <Select
-                            value={formData.specialization}
-                            onValueChange={(value) => handleInputChange('specialization', value)}
-                          >
-                            <SelectTrigger><SelectValue placeholder="Select specialization" /></SelectTrigger>
-                            <SelectContent>
-                              {specs.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Input
-                            value={displaySpec || 'Not set'}
-                            disabled
-                            className="bg-muted"
-                          />
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Account Status Tab */}
-          <TabsContent value="status">
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Status</CardTitle>
-                <CardDescription>Your account verification and status information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium text-muted-foreground">Email Status</p>
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${user?.is_verified ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                      <p className={`font-medium ${user?.is_verified ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                        {user?.is_verified ? 'Verified' : 'Pending Verification'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium text-muted-foreground">Account Role</p>
+                
+                <div className="flex items-center justify-between p-5 rounded-xl border bg-card hover:bg-accent/5 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Account Standing</p>
                     <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        user?.role === 'super_admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                        user?.role === 'admin' ? 'bg-primary/10 text-primary' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {user?.role === 'super_admin' ? '⭐ Super Admin' : user?.role === 'admin' ? '🛡 Admin' : '🎓 Student'}
-                      </span>
+                      <span className="font-semibold text-lg">{user?.is_disabled ? 'Disabled' : 'Active & Healthy'}</span>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium text-muted-foreground">Account Status</p>
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${user?.is_disabled ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                      <p className={`font-medium ${user?.is_disabled ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                        {user?.is_disabled ? 'Disabled' : 'Active'}
-                      </p>
-                    </div>
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full ${user?.is_disabled ? 'bg-red-100 dark:bg-red-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
+                    <div className={`w-3 h-3 rounded-full shadow-sm ${user?.is_disabled ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                   </div>
-                  
-                  <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium text-muted-foreground">Member Since</p>
-                    <p className="font-medium">
+                </div>
+                
+                <div className="flex items-center justify-between p-5 rounded-xl border bg-card hover:bg-accent/5 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Member Since</p>
+                    <p className="font-semibold text-lg">
                       {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -639,166 +664,194 @@ const Profile: React.FC = () => {
                       }) : 'N/A'}
                     </p>
                   </div>
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800">
+                    <Clock className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* Security Tab */}
-          <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security</CardTitle>
-                <CardDescription>Change your password and manage security settings</CardDescription>
+        {/* Security Tab */}
+        <TabsContent value="security" className="mt-0">
+          <div className="grid grid-cols-1 gap-6">
+            <Card className="border shadow-sm border-amber-200/50 dark:border-amber-900/50">
+              <CardHeader className="bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-b border-amber-100 dark:border-amber-900/50 pb-6">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Key className="w-5 h-5 text-amber-500" />
+                  Change Password
+                </CardTitle>
+                <CardDescription>Ensure your account stays secure with a strong password</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-8">
+                  <div className="space-y-3">
                     <Label htmlFor="currentPassword">Current Password</Label>
                     <Input
                       id="currentPassword"
                       type="password"
                       value={securityForm.currentPassword}
                       onChange={(e) => handleSecurityInputChange('currentPassword', e.target.value)}
+                      className="focus-visible:ring-amber-500 border-border"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="hidden md:block"></div>
+                  <div className="space-y-3">
                     <Label htmlFor="newPassword">New Password</Label>
                     <Input
                       id="newPassword"
                       type="password"
                       value={securityForm.newPassword}
                       onChange={(e) => handleSecurityInputChange('newPassword', e.target.value)}
+                      className="focus-visible:ring-amber-500 border-border"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
                       value={securityForm.confirmPassword}
                       onChange={(e) => handleSecurityInputChange('confirmPassword', e.target.value)}
+                      className="focus-visible:ring-amber-500 border-border"
                     />
                   </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button onClick={handlePasswordChange} disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Change Password
+                <div className="flex justify-end pt-4 border-t border-border/50">
+                  <Button onClick={handlePasswordChange} disabled={isLoading} className="bg-amber-600 hover:bg-amber-700 text-white shadow-sm">
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Update Password
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Two-Factor Authentication</CardTitle>
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Two-Factor Authentication</CardTitle>
                 <CardDescription>Add an extra layer of security to your account</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">2FA Status</p>
-                    <p className="text-sm text-muted-foreground">Not enabled</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border bg-muted/30">
+                  <div className="mb-4 sm:mb-0">
+                    <p className="font-semibold flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-muted-foreground" />
+                      Not Enabled
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">We recommend enabling 2FA for maximum security.</p>
                   </div>
-                  <Button variant="outline" disabled>
-                    Enable 2FA
+                  <Button variant="outline" disabled className="w-full sm:w-auto">
+                    Coming Soon
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+        </TabsContent>
 
-          {/* Danger Zone Tab */}
-          <TabsContent value="danger">
-            <Card className="border-destructive">
-              <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                <CardDescription>Permanently delete your account</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {user?.role === 'super_admin' ? (
-                  <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                    <p className="font-medium text-purple-800 dark:text-purple-300">Super Admin accounts cannot be deleted</p>
-                    <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                      The Super Admin account is protected and cannot be deleted to ensure the platform always has an administrator.
+        {/* Danger Zone Tab */}
+        <TabsContent value="danger" className="mt-0">
+          <Card className="border-red-200 dark:border-red-900/50 shadow-sm overflow-hidden">
+            <CardHeader className="bg-red-50/50 dark:bg-red-950/20 border-b border-red-100 dark:border-red-900/50 pb-6">
+              <CardTitle className="text-xl text-red-600 dark:text-red-400 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription className="text-red-600/70 dark:text-red-400/70">
+                Irreversible and destructive actions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              {user?.role === 'super_admin' ? (
+                <div className="p-5 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                      <ShieldAlert className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-purple-900 dark:text-purple-300">Protected Account</p>
+                      <p className="text-sm text-purple-700 dark:text-purple-400 mt-1 leading-relaxed">
+                        The Super Admin account is system-protected and cannot be deleted to ensure the platform always maintains an administrator.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : !showDeleteConfirm ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/10">
+                  <div className="flex-1 mb-4 sm:mb-0">
+                    <p className="font-semibold text-foreground">Delete Account</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Permanently delete your account, files, and all associated data. This action cannot be reversed.
                     </p>
                   </div>
-                ) : !showDeleteConfirm ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">Delete Account</p>
-                      <p className="text-sm text-muted-foreground">
-                        Permanently delete your account and all associated data
-                      </p>
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full sm:w-auto shadow-sm"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6 p-6 border border-red-200 dark:border-red-900/50 rounded-xl bg-red-50/50 dark:bg-red-950/20 animate-fade-in">
+                  <div className="space-y-2 text-center sm:text-left">
+                    <h4 className="text-lg font-bold text-red-600 dark:text-red-400">Are you absolutely sure?</h4>
+                    <p className="text-sm text-red-800/80 dark:text-red-200/80 max-w-2xl">
+                      {deleteStep === 'request' 
+                        ? 'This action cannot be undone. This will permanently delete your account and remove your data from our servers. Click confirm to receive a verification code via email.'
+                        : 'We sent a verification code to your email. Enter it below to confirm permanent account deletion.'
+                      }
+                    </p>
+                  </div>
+                  
+                  {deleteStep === 'confirm' && (
+                    <div className="space-y-3 max-w-sm mx-auto sm:mx-0">
+                      <Label htmlFor="deleteCode" className="text-red-900 dark:text-red-200">Verification Code</Label>
+                      <Input
+                        id="deleteCode"
+                        type="text"
+                        placeholder="Enter the 6-digit code"
+                        value={deleteCode}
+                        onChange={(e) => setDeleteCode(e.target.value)}
+                        className="border-red-300 dark:border-red-800 focus-visible:ring-red-500 bg-white dark:bg-background"
+                      />
                     </div>
-                    <Button 
-                      variant="destructive" 
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="w-full sm:w-auto"
+                  )}
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <Button
+                      variant="destructive"
+                      onClick={deleteStep === 'request' ? handleRequestDeletion : handleConfirmDeletion}
+                      disabled={isLoading || (deleteStep === 'confirm' && !deleteCode)}
+                      className="w-full sm:w-auto shadow-sm"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Account
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      {deleteStep === 'request' ? 'Send Deletion Code' : 'Permanently Delete'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteStep('request');
+                        setDeleteCode('');
+                      }}
+                      className="w-full sm:w-auto border-red-200 hover:bg-red-100 dark:border-red-900/50 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400"
+                    >
+                      Cancel
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-4 p-4 border border-destructive rounded-lg bg-destructive/5">
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-destructive">Delete Account</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {deleteStep === 'request' 
-                          ? 'This action cannot be undone. Click confirm to receive a verification code via email.'
-                          : 'Enter the verification code sent to your email to confirm account deletion.'
-                        }
-                      </p>
-                    </div>
-                    
-                    {deleteStep === 'confirm' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="deleteCode">Verification Code</Label>
-                        <Input
-                          id="deleteCode"
-                          type="text"
-                          placeholder="Enter verification code"
-                          value={deleteCode}
-                          onChange={(e) => setDeleteCode(e.target.value)}
-                        />
-                      </div>
-                    )}
-                    
-                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                      <Button
-                        variant="destructive"
-                        onClick={deleteStep === 'request' ? handleRequestDeletion : handleConfirmDeletion}
-                        disabled={isLoading || (deleteStep === 'confirm' && !deleteCode)}
-                        className="w-full sm:w-auto"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4 mr-2" />
-                        )}
-                        {deleteStep === 'request' ? 'Confirm Deletion' : 'Delete Account'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setShowDeleteConfirm(false);
-                          setDeleteStep('request');
-                          setDeleteCode('');
-                        }}
-                        className="w-full sm:w-auto"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
         <DialogContent className="max-w-lg">
