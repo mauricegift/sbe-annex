@@ -128,7 +128,7 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <a 
-                  href="https://wa.me/message/OCSOK3IUFPWWA1" 
+                  href="https://whatsapp.com/channel/0029VbCpYtZLtOj5LDuj7Q1p" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary hover:translate-x-1 transition-all duration-200 flex items-center gap-2"
