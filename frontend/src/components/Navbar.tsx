@@ -126,7 +126,7 @@ const Navbar: React.FC = () => {
   );
 
   return (
-    <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border shadow-card rounded-b-2xl">
+    <nav className="sticky top-0 z-50 bg-background/60 backdrop-blur-xl border-b border-border/40 shadow-sm transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
