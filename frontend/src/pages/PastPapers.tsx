@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { pastPapersAPI, reviewsAPI, setAuthErrorHandler } from '../lib/api';
 import { uploadToGithubCdn } from '../lib/githubCdn';
@@ -111,7 +111,15 @@ const PastPapersMain: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeYear, setActiveYear] = useState(user?.year_of_study || 1);
-  const [mainTab, setMainTab] = useState('browse');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [mainTab, setMainTab] = useState(() => {
+    const t = searchParams.get('tab');
+    return t === 'my-uploads' ? 'my-uploads' : 'browse';
+  });
+  const handleMainTabChange = (value: string) => {
+    setMainTab(value);
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', value); return p; });
+  };
   const [myUploads, setMyUploads] = useState<PastPaper[]>([]);
   const [isLoadingMyUploads, setIsLoadingMyUploads] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -334,7 +342,7 @@ const PastPapersMain: React.FC = () => {
       </div>
 
       {/* Main Tabs: Browse / My Uploads */}
-      <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-4">
+      <Tabs value={mainTab} onValueChange={handleMainTabChange} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 max-w-xs">
           <TabsTrigger value="browse">Browse</TabsTrigger>
           <TabsTrigger value="my-uploads">My Uploads</TabsTrigger>
