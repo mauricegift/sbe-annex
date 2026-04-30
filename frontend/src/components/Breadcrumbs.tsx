@@ -77,7 +77,7 @@ const Breadcrumbs: React.FC = () => {
               <span>{crumb.label}</span>
             </Link>
           ) : (
-            <span className="text-foreground font-medium whitespace-nowrap">{crumb.label}</span>
+            <span className="text-primary font-medium whitespace-nowrap">{crumb.label}</span>
           )}
         </React.Fragment>
       ))}
