@@ -86,7 +86,7 @@ const About: React.FC = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              About BBM Annex
+              About SBE Annex
             </h1>
             <p className="text-lg text-muted-foreground">
               Empowering students with comprehensive academic resources, study materials, 
@@ -159,7 +159,7 @@ const About: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4 text-muted-foreground">
               <p>
-                BBM Annex was born from a simple observation: students often struggle to find 
+                SBE Annex was born from a simple observation: students often struggle to find 
                 quality study materials, especially for specific courses and specializations. 
                 What started as a small collection of shared notes among friends has grown 
                 into a comprehensive platform serving thousands of students.
@@ -171,7 +171,7 @@ const About: React.FC = () => {
                 a community of learners who support each other.
               </p>
               <p>
-                Today, BBM Annex continues to evolve, adding new features and resources to 
+                Today, SBE Annex continues to evolve, adding new features and resources to 
                 better serve our growing community of students. Our commitment remains the 
                 same: to make quality education accessible to everyone.
               </p>
