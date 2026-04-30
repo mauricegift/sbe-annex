@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+gunicorn
+motor
+pymongo
+pydantic[email]
+python-dotenv
+python-jose[cryptography]
+passlib
+bcrypt==4.0.1
+aiofiles
+pyjwt
+python-multipart
+aiohttp
+pytz
+tzdata
+requests
