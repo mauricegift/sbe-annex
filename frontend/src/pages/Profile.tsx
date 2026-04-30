@@ -319,7 +319,7 @@ const Profile: React.FC = () => {
     <div className="container mx-auto px-4 py-6 sm:py-10 max-w-5xl space-y-8">
       {/* Hero Section */}
       <div className="relative rounded-3xl overflow-hidden shadow-sm border bg-card">
-        <div className="h-32 sm:h-48 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 relative">
+        <div className="h-28 sm:h-36 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 relative">
           <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-20"></div>
           <Button 
             variant="outline" 
@@ -345,7 +345,7 @@ const Profile: React.FC = () => {
               <Button
                 size="icon"
                 variant="secondary"
-                className="absolute bottom-2 right-2 h-10 w-10 rounded-full shadow-lg border-2 border-background opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-2 right-2 h-10 w-10 rounded-full shadow-lg border-2 border-background opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
