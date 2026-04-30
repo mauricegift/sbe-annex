@@ -1039,7 +1039,7 @@ const NotesUpload: React.FC = () => {
                     id="course_code"
                     value={formData.course_code}
                     onChange={(e) => setFormData(prev => ({ ...prev, course_code: e.target.value.toUpperCase() }))}
-                    placeholder="e.g., BBM358"
+                    placeholder="e.g., SBE358"
                     required
                   />
                 </div>
