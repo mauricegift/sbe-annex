@@ -85,7 +85,6 @@ const Register: React.FC = () => {
 
   const yearOfStudy = parseInt(formData.year_of_study) || 0;
   const needsGroupSpec = !isFirstUser && yearOfStudy >= 3;
-  const selectedGroup = groups.find(g => g.code === formData.group);
 
   const validateForm = () => {
     const newErrors: string[] = [];
@@ -106,7 +105,6 @@ const Register: React.FC = () => {
     }
     if (needsGroupSpec) {
       if (!formData.group) newErrors.push("Study group is required for Year 3 and above");
-      if (!formData.specialization) newErrors.push("Specialization is required for Year 3 and above");
     }
     if (!acceptedTerms) newErrors.push("You must accept the Terms and Conditions to register");
     return newErrors;
@@ -130,7 +128,6 @@ const Register: React.FC = () => {
       };
       if (formData.phone_number) payload.phone_number = formData.phone_number;
       if (formData.group) payload.group = formData.group;
-      if (formData.specialization) payload.specialization = formData.specialization;
 
       await register(payload);
       navigate("/verify", {
@@ -281,7 +278,7 @@ const Register: React.FC = () => {
 
               {needsGroupSpec && (
                 <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                  <p className="text-xs font-medium text-primary">Year 3+ students must select their study group and specialization</p>
+                  <p className="text-xs font-medium text-primary">Year 3+ students must select their study group</p>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Study Group *</Label>
                     <Select value={formData.group} onValueChange={v => handleSelectChange("group", v)}>
@@ -295,21 +292,6 @@ const Register: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  {selectedGroup && selectedGroup.specializations.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Specialization *</Label>
-                      <Select value={formData.specialization} onValueChange={v => handleSelectChange("specialization", v)}>
-                        <SelectTrigger className="h-12 border-2 border-border/50">
-                          <SelectValue placeholder="Select your specialization" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {selectedGroup.specializations.map(s => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -426,7 +408,7 @@ const Register: React.FC = () => {
           </p>
         ) : (
           <p className="text-center text-xs text-muted-foreground">
-            Study group and specialization can be updated later from your Profile page.
+            Study group can be updated later from your Profile page.
           </p>
         )}
       </div>
