@@ -228,7 +228,7 @@ const Home: React.FC = () => {
     {
       icon: GraduationCap,
       title: 'All Specializations',
-      description: 'Curated resources for every BBM specialization track',
+      description: 'Curated resources for every SBE specialization track',
       color: 'from-orange-500 to-amber-500',
     },
   ];
@@ -242,7 +242,7 @@ const Home: React.FC = () => {
 
   const testimonials = [
     {
-      quote: "BBM Annex has been a game-changer for my studies. The notes and past papers helped me improve my grades significantly!",
+      quote: "SBE Annex has been a game-changer for my studies. The notes and past papers helped me improve my grades significantly!",
       name: "Dantech Securenet",
       role: "Year 3, Accounting",
       rating: 5,
@@ -256,7 +256,7 @@ const Home: React.FC = () => {
       profilePhoto: "/testimonials/spencer-onyango.jpg",
     },
     {
-      quote: "As a student, BBM Annex helped me understand what to expect. The community is supportive and resources are top-notch.",
+      quote: "As a student, SBE Annex helped me understand what to expect. The community is supportive and resources are top-notch.",
       name: "CBS Rolland",
       role: "Year 4, Finance & Banking",
       rating: 5,
@@ -270,7 +270,7 @@ const Home: React.FC = () => {
       profilePhoto: "/testimonials/regina-joel.jpg",
     },
     {
-      quote: "I love how I can contribute notes and help other students. BBM Annex creates a true learning community.",
+      quote: "I love how I can contribute notes and help other students. SBE Annex creates a true learning community.",
       name: "Faith N.",
       role: "Year 3, Human Resource",
       rating: 5,
@@ -317,12 +317,12 @@ const Home: React.FC = () => {
               <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-primary/30 shadow-md group-hover:border-primary/50 transition-all duration-300">
                 <img 
                   src="/android-chrome-512x512.png" 
-                  alt="BBM Annex Logo" 
+                  alt="SBE Annex Logo" 
                   className="w-full h-full object-cover"
                 />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase tracking-wide">
-                BBM Annex
+                SBE Annex
               </span>
             </Link>
 
@@ -559,7 +559,7 @@ const Home: React.FC = () => {
               </h1>
               
               <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Access premium study notes, verified past papers, and connect with a thriving community of BBM students. 
+                Access premium study notes, verified past papers, and connect with a thriving community of SBE students. 
                 Everything you need to excel, all in one place.
               </p>
 
@@ -662,12 +662,12 @@ const Home: React.FC = () => {
                         >
                           <div className="page-content-colored">
                             <div className="page-text">
-                              <span className="text-white font-bold text-lg">BBM ANNEX</span>
+                              <span className="text-white font-bold text-lg">SBE ANNEX</span>
                             </div>
                             <div className="page-logo">
                               <img 
                                 src="/android-chrome-512x512.png" 
-                                alt="BBM Annex Logo" 
+                                alt="SBE Annex Logo" 
                                 className="w-12 h-12 rounded-full border-2 border-white/30 shadow-lg"
                               />
                             </div>
@@ -687,7 +687,7 @@ const Home: React.FC = () => {
                           <GraduationCap className="w-12 h-12 text-primary-foreground" />
                         </div>
                         <div className="book-title">
-                          <span className="book-title-main">BBM ANNEX</span>
+                          <span className="book-title-main">SBE ANNEX</span>
                           <span className="book-title-sub">Study Resources</span>
                         </div>
                         <div className="book-decoration" />
@@ -775,7 +775,7 @@ const Home: React.FC = () => {
               </span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Our platform provides all the resources you need to excel in your BBM studies
+              Our platform provides all the resources you need to excel in your SBE studies
             </p>
           </motion.div>
 
@@ -1004,7 +1004,7 @@ const Home: React.FC = () => {
                 Ready to Excel in Your Studies?
               </h2>
               <p className="text-primary-foreground/80 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-                Join hundreds of students already using BBM Annex to ace their exams and succeed academically.
+                Join hundreds of students already using SBE Annex to ace their exams and succeed academically.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
@@ -1070,8 +1070,8 @@ const Home: React.FC = () => {
             <Accordion type="single" collapsible className="w-full space-y-4">
               {[
                 {
-                  question: "Is BBM Annex free to use?",
-                  answer: "Yes! BBM Annex is completely free for all students. You can access notes, past papers, and other resources without any subscription fees."
+                  question: "Is SBE Annex free to use?",
+                  answer: "Yes! SBE Annex is completely free for all students. You can access notes, past papers, and other resources without any subscription fees."
                 },
                 {
                   question: "How do I upload my notes?",
@@ -1087,7 +1087,7 @@ const Home: React.FC = () => {
                 },
                 {
                   question: "Can I access resources on mobile?",
-                  answer: "Absolutely! BBM Annex is fully responsive and works seamlessly on smartphones, tablets, and desktop computers. You can study anywhere, anytime."
+                  answer: "Absolutely! SBE Annex is fully responsive and works seamlessly on smartphones, tablets, and desktop computers. You can study anywhere, anytime."
                 },
                 {
                   question: "How do I report incorrect content?",
@@ -1136,15 +1136,15 @@ const Home: React.FC = () => {
               <div className="flex items-center gap-3">
                 <img 
                   src="/android-chrome-192x192.png" 
-                  alt="BBM Annex Logo" 
+                  alt="SBE Annex Logo" 
                   className="w-12 h-12 rounded-xl shadow-md"
                 />
                 <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  BBM Annex
+                  SBE Annex
                 </span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Your comprehensive academic resource hub for BBM students. Learn, share, and succeed together.
+                Your comprehensive academic resource hub for SBE students. Learn, share, and succeed together.
               </p>
             </div>
 
@@ -1172,7 +1172,7 @@ const Home: React.FC = () => {
               <h3 className="font-bold text-foreground">Connect</h3>
               <ul className="space-y-3">
                 <li>
-                  <a href="mailto:bbm@giftedtech.co.ke" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
+                  <a href="mailto:sbe@giftedtech.co.ke" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
                     <Mail className="w-4 h-4" /> Email
                   </a>
                 </li>
@@ -1187,7 +1187,7 @@ const Home: React.FC = () => {
 
           <div className="mt-12 pt-8 border-t border-border/50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024-{currentYear} BBM Annex. All rights reserved.
+              © 2024-{currentYear} SBE Annex. All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               Made with <Heart className="w-4 h-4 text-destructive fill-destructive" /> for students
