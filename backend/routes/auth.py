@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import EmailStr
 import jwt
 
@@ -39,26 +39,17 @@ import uuid
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "")
-
-
-# ── Check first user ──────────────────────────────────────────────────────────────
-
-@router.get("/check-first-user", response_model=Dict[str, Any])
-async def check_first_user():
-    """Check if the platform has any registered users yet (no auth required)."""
-    user_count = await db.users.count_documents({})
-    return {"is_first_user": user_count == 0}
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://bbm.giftedtech.co.ke")
 
 
 # ── Register ─────────────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
-async def register(user: UserCreate):
+async def register(user: UserCreate, request: Request):
     """
     Register a new user.
-    - The very first user to register becomes super_admin automatically.
-    - All subsequent users register as regular users (role=user).
+    - First ever user becomes super_admin automatically.
+    - If mauricegift045@gmail.com already exists and no super_admin exists, they get promoted on startup.
     - Sends email verification LINK or SMS OTP based on chosen method.
     """
     # Check uniqueness
@@ -75,27 +66,17 @@ async def register(user: UserCreate):
             detail="Username, email, or phone number already registered",
         )
 
-    # Determine role — first user ever is super_admin
-    user_count = await db.users.count_documents({})
-    is_first_user = user_count == 0
-    if is_first_user:
-        role = "super_admin"
-        is_admin = True
-    else:
-        role = "user"
-        is_admin = False
+    # Get client IP for duplicate account prevention
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    reg_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
 
-    # Enforce group/specialization for non-first-users in year 3+
-    if not is_first_user and user.year_of_study >= 3:
-        if not user.group:
+    # Prevent multiple accounts from the same IP (skip for super admin email)
+    if reg_ip and reg_ip != "unknown" and user.email != "mauricegift045@gmail.com":
+        ip_conflict = await db.users.find_one({"registration_ip": reg_ip, "is_disabled": {"$ne": True}})
+        if ip_conflict:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Study group is required for Year 3 and above.",
-            )
-        if not user.specialization:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Specialization is required for Year 3 and above.",
+                detail="An account has already been registered from your network. Please use your existing account or contact support.",
             )
 
     # Validate group/specialization against DB groups if provided
@@ -111,6 +92,15 @@ async def register(user: UserCreate):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Specialization '{user.specialization}' is not valid for group '{user.group}'.",
             )
+
+    # Determine role — first user ever is super_admin
+    user_count = await db.users.count_documents({})
+    if user_count == 0:
+        role = "super_admin"
+        is_admin = True
+    else:
+        role = "user"
+        is_admin = False
 
     hashed = hash_password(user.password)
     code = generate_otp()  # used for SMS; email gets a link
@@ -134,6 +124,7 @@ async def register(user: UserCreate):
         "role": role,
         "is_disabled": False,
         "created_at": datetime.utcnow(),
+        "registration_ip": reg_ip,
         # SMS verification fields
         "verification_code": code,
         "code_expires": code_expires,
@@ -232,10 +223,11 @@ async def verify_via_sms(verification: EmailVerification):
 # ── Resend verification ───────────────────────────────────────────────────────────
 
 @router.post("/resend-verification", response_model=Dict[str, Any])
-async def resend_verification(email: EmailStr):
+async def resend_verification(email: EmailStr, force_email: bool = False):
     """
     Resend verification email link or SMS code.
     Enforces a 60-second cooldown between resends.
+    Set force_email=true to send email link even for SMS accounts (fallback).
     """
     user = await db.users.find_one({"email": email})
     if not user:
@@ -249,6 +241,22 @@ async def resend_verification(email: EmailStr):
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Please wait {remaining} second(s) before requesting another code.",
         )
+
+    # force_email: SMS user wants email link fallback
+    if force_email and user.get("verification_method") == "sms":
+        from lib.tokens import create_email_token
+        import os as _os
+        base_url = _os.getenv("BASE_URL", "https://bbmback.giftedtech.co.ke")
+        token_str = create_email_token(user["email"], "verify")
+        link = f"{base_url}/api/auth/verify-link?token={token_str}"
+        from utils.email_service import send_email_link
+        ok = await send_email_link(user["email"], user["username"], link, "resend_verify")
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"code_sent_at": datetime.utcnow()}})
+        return {
+            "message": "A verification link has been sent to your email. Check your inbox and spam folder.",
+            "code_sent": ok,
+            "method": "email",
+        }
 
     ok, method, new_code = await dispatch_resend_verification(user)
 
@@ -511,3 +519,54 @@ async def _delete_user_data(user: dict):
     await db.notes.delete_many({"uploaded_by": uid})
     await db.past_papers.delete_many({"uploaded_by": uid})
     await db.reviews.delete_many({"reviewed_by": uid})
+
+
+# ── Confirm email change via link ─────────────────────────────────────────────────
+
+@router.get("/confirm-email-change")
+async def confirm_email_change(token: str):
+    """
+    Called when the user clicks the email-change confirmation link sent to their new email.
+    Validates the token, ensures the new email is still available, then updates the user record.
+    Redirects to FRONTEND_URL/profile?email_changed=true on success.
+    """
+    from fastapi.responses import RedirectResponse
+
+    try:
+        payload = decode_email_token(token)
+    except jwt.ExpiredSignatureError:
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=expired")
+    except jwt.PyJWTError:
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+
+    if payload.get("type") != "change_email":
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+
+    old_email = payload.get("email")
+    new_email = payload.get("new_email")
+
+    if not old_email or not new_email:
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+
+    user = await db.users.find_one({"email": old_email})
+    if not user:
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=not_found")
+
+    # Check the stored pending email matches what's in the token
+    if user.get("pending_email", "").lower() != new_email.lower():
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=mismatch")
+
+    # Ensure new email is still free
+    conflict = await db.users.find_one({"email": new_email, "_id": {"$ne": user["_id"]}})
+    if conflict:
+        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=taken")
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {"email": new_email},
+            "$unset": {"pending_email": "", "email_change_sent_at": ""},
+        },
+    )
+
+    return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_changed=true")
