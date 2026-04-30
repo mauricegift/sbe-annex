@@ -73,7 +73,7 @@ const BlogMain: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Announcements</h1>
-          <p className="text-muted-foreground">Latest updates and announcements from BBM Annex</p>
+          <p className="text-muted-foreground">Latest updates and announcements from SBE Annex</p>
         </div>
         <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
