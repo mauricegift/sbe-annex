@@ -25,7 +25,7 @@ Interactive docs: http://localhost:3192/docs
 - **Pydantic v1** — data validation and serialisation
 - **JWT (HS256)** — stateless authentication
 - **Resend** — transactional email delivery
-- **OTS** — SMS OTP delivery (Kenya)
+- **SMSS** — Any SMS API for SMS OTP delivery (Kenya)
 
 ## Key Endpoints
 
