@@ -1369,7 +1369,7 @@ const Home: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <a href="https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
+                  <a href="https://whatsapp.com/channel/0029VbCpYtZLtOj5LDuj7Q1p" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
                     <MessageCircle className="w-4 h-4" /> WhatsApp
                   </a>
                 </li>
