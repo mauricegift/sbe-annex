@@ -198,10 +198,10 @@ const Contact: React.FC = () => {
                     <div>
                       <p className="font-medium text-sm">Email</p>
                       <a 
-                        href="mailto:bbm@giftedtech.co.ke" 
+                        href="mailto:sbe@giftedtech.co.ke" 
                         className="text-sm text-muted-foreground hover:text-primary transition-colors"
                       >
-                        bbm@giftedtech.co.ke
+                        sbe@giftedtech.co.ke
                       </a>
                     </div>
                   </div>
