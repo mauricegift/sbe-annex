@@ -56,7 +56,7 @@ const Privacy: React.FC = () => {
                 </CardHeader>
                 <CardContent className="prose prose-sm dark:prose-invert max-w-none">
                   <p className="text-muted-foreground leading-relaxed">
-                    At BBM Annex, we take your privacy seriously. This Privacy Policy explains how we collect, use, 
+                    At SBE Annex, we take your privacy seriously. This Privacy Policy explains how we collect, use, 
                     disclose, and safeguard your information when you use our educational platform. Please read this 
                     policy carefully to understand our practices regarding your personal data.
                   </p>
@@ -210,8 +210,8 @@ const Privacy: React.FC = () => {
                   </ul>
                   <p className="mt-4">
                     To exercise any of these rights, please contact us at{' '}
-                    <a href="mailto:bbm@giftedtech.co.ke" className="text-primary hover:underline">
-                      bbm@giftedtech.co.ke
+                    <a href="mailto:sbe@giftedtech.co.ke" className="text-primary hover:underline">
+                      sbe@giftedtech.co.ke
                     </a>
                   </p>
                 </CardContent>
@@ -255,8 +255,8 @@ const Privacy: React.FC = () => {
                     If you have any questions about this Privacy Policy or our data practices, please contact us at:
                   </p>
                   <p className="mt-2">
-                    <a href="mailto:bbm@giftedtech.co.ke" className="text-primary hover:underline">
-                      bbm@giftedtech.co.ke
+                    <a href="mailto:sbe@giftedtech.co.ke" className="text-primary hover:underline">
+                      sbe@giftedtech.co.ke
                     </a>
                   </p>
                 </CardContent>
@@ -271,7 +271,7 @@ const Privacy: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <p>By using BBM Annex, you consent to the collection and use of information as described in this Privacy Policy.</p>
+            <p>By using SBE Annex, you consent to the collection and use of information as described in this Privacy Policy.</p>
           </motion.div>
         </div>
       </div>
