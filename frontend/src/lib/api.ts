@@ -119,6 +119,14 @@ export const userAPI = {
   }) => api.put('/user/profile', data),
   updateProfilePicture: (profile_picture: string) =>
     api.post('/user/update-profile-picture', { profile_picture }),
+  requestEmailChange: (new_email: string) =>
+    api.post('/user/request-email-change', { new_email }),
+  requestPhoneChange: (new_phone: string) =>
+    api.post('/user/request-phone-change', { new_phone }),
+  confirmPhoneChange: (code: string) =>
+    api.post('/user/confirm-phone-change', { code }),
+  updateNotificationPreferences: (notify_on_upload_decision: boolean) =>
+    api.put('/user/notification-preferences', { notify_on_upload_decision }),
 };
 
 export const dashboardAPI = {
