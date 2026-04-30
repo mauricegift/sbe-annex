@@ -50,12 +50,12 @@ const PublicHeader: React.FC = () => {
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/30">
                 <img 
                   src="/android-chrome-512x512.png" 
-                  alt="BBM Annex Logo" 
+                  alt="SBE Annex Logo" 
                   className="w-full h-full object-cover"
                 />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase">
-                BBM Annex
+                SBE Annex
               </span>
             </Link>
 
