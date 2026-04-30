@@ -57,7 +57,7 @@ SBE Annex (formerly BBM Annex) is a full-stack web application that serves as a 
 | **Database** | MongoDB (motor async driver) |
 | **Auth** | JWT (HS256) — Bearer tokens |
 | **Email** | Resend API |
-| **SMS** | OTS API (Kenya) |
+| **SMS** | ANY SMS API (Kenya) |
 | **File storage** | GitHub CDN (raw.githubusercontent.com) |
 | **Frontend hosting** | Vercel |
 | **Backend hosting** | VPS / Railway / Render / Heroku |
@@ -349,9 +349,9 @@ RESEND_API_KEY=re_your_api_key
 RESEND_FROM=SBE Annex <noreply@yourdomain.com>
 RESEND_REPLY_TO=support@yourdomain.com
 
-# ── SMS — OTS (https://sms.ots.co.ke — Kenya) ────────────────────────────────
+# ── SMS — CONFIGURATION ────────────────────────────────
 SMS_API_KEY=your_ots_api_key
-SMS_API_URL=https://sms.ots.co.ke/api/v3
+SMS_API_URL=
 SMS_SENDER_ID=YOURID
 
 # ── Branding ──────────────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ RESEND_COOLDOWN_SECONDS=60
 
 ### Frontend `.env`
 
-Create `frontend/.env` from `frontend/.env.example`:
+Create `frontend/.env` from `frontend/.env.example` or just add your backend url to vercel.json in production:
 
 ```env
 # Backend API base URL (no trailing slash)
@@ -612,5 +612,9 @@ The platform uses a self-service super admin bootstrap:
 5. Open a Pull Request.
 
 ---
+
+- **[CONTACT SUPPORT](https://api.giftedtech.co.ke/contact) For More Info**
+- **Join [WHATSAPP CHANNEL](https://whatsapp.com/channel/0029VbCpYtZLtOj5LDuj7Q1p) for Daily Updates.**
+- **Check out my [Website Profile](https://me.giftedtech.co.ke) for More Projects.**
 
 **Built with ❤️ for SBE students**
