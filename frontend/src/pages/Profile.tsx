@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from '../lib/toast';
-import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle, Check, Clock } from 'lucide-react';
+import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle, Check, Clock, Calendar, Shield } from 'lucide-react';
 import { ProfileSkeleton } from '../components/PageSkeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import Cropper from 'react-easy-crop';
@@ -316,36 +316,36 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:py-10 max-w-5xl space-y-8">
-      {/* Hero Section */}
-      <div className="relative rounded-3xl overflow-hidden shadow-sm border bg-card">
-        <div className="h-28 sm:h-36 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 relative">
-          <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-20"></div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
-            disabled={isRefreshing}
-            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 border-white/20 text-white backdrop-blur-sm"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-5xl space-y-6">
+      {/* Page Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+            <Calendar className="w-4 h-4" />
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">My Profile</h1>
+          <p className="text-muted-foreground text-sm">Manage your account and personal details</p>
         </div>
-        
-        <div className="px-6 sm:px-10 pb-8 relative">
-          <div className="flex flex-col sm:flex-row gap-6 sm:items-end -mt-16 sm:-mt-20 mb-6">
-            <div className="relative group">
-              <Avatar className="h-32 w-32 sm:h-40 sm:w-40 border-4 border-background shadow-xl">
+        <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="shrink-0 mt-1">
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
+
+      {/* Profile Card */}
+      <Card className="border border-border/60 bg-gradient-to-r from-primary/5 to-primary/10 overflow-hidden">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-4">
+            {/* Avatar with camera upload */}
+            <div className="relative flex-shrink-0">
+              <Avatar className="h-16 w-16 border-2 border-primary/20">
                 <AvatarImage src={user?.profile_picture} alt={user?.name} className="object-cover" />
-                <AvatarFallback className="text-4xl bg-primary/10 text-primary font-bold">
+                <AvatarFallback className="text-xl bg-primary/10 text-primary font-bold">
                   {user?.name?.charAt(0)?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <Button
-                size="icon"
-                variant="secondary"
-                className="absolute bottom-2 right-2 h-10 w-10 rounded-full shadow-lg border-2 border-background opacity-100 transition-opacity"
+              <button
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background border-2 border-primary/30 shadow flex items-center justify-center hover:bg-primary/10 transition-colors"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -360,13 +360,14 @@ const Profile: React.FC = () => {
                   }
                 }}
                 disabled={isUploading}
+                title="Change profile picture"
               >
                 {isUploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                 ) : (
-                  <Camera className="h-5 w-5" />
+                  <Camera className="h-3.5 w-3.5 text-primary" />
                 )}
-              </Button>
+              </button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -375,50 +376,79 @@ const Profile: React.FC = () => {
                 className="hidden"
               />
             </div>
-            
-            <div className="flex-1 pb-2">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{user?.name}</h1>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-sm w-fit ${
-                  user?.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
-                  user?.role === 'admin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
-                  'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
-                }`}>
-                  {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'Student'}
-                </span>
-              </div>
-              <p className="text-muted-foreground mt-1 font-medium text-lg">@{user?.username}</p>
-            </div>
-            
-            <div className="flex gap-3 pb-2 w-full sm:w-auto">
-              {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto shadow-sm">
-                  Edit Profile
-                </Button>
-              ) : (
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <Button variant="outline" onClick={() => {
-                    setIsEditing(false);
-                    setFormData({
-                      name: user?.name || '',
-                      year_of_study: user?.year_of_study || 1,
-                      semester_of_study: user?.semester_of_study || 1,
-                      group: (user as any)?.group || '',
-                      specialization: user?.specialization || '',
-                    });
-                  }} className="flex-1 sm:flex-none">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave} disabled={isLoading} className="flex-1 sm:flex-none shadow-sm">
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save
-                  </Button>
+
+            {/* Name + role + actions */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-lg text-foreground">{user?.name}</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                      user?.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
+                      user?.role === 'admin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
+                      'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
+                    }`}>
+                      <Shield className="w-3 h-3 mr-1" />
+                      {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'Student'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">@{user?.username} · {user?.email}</p>
                 </div>
-              )}
+                <div className="flex gap-2 shrink-0">
+                  {!isEditing ? (
+                    <Button size="sm" onClick={() => setIsEditing(true)}>
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setIsEditing(false);
+                        setFormData({
+                          name: user?.name || '',
+                          year_of_study: user?.year_of_study || 1,
+                          semester_of_study: user?.semester_of_study || 1,
+                          group: (user as any)?.group || '',
+                          specialization: user?.specialization || '',
+                        });
+                      }}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={handleSave} disabled={isLoading}>
+                        {isLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                        Save
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+
+          {/* Academic info pills */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+              <User className="w-3.5 h-3.5 text-primary" />
+              Year {user?.year_of_study}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+              <Clock className="w-3.5 h-3.5 text-primary" />
+              Semester {user?.semester_of_study}
+            </span>
+            {(user as any)?.group && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+                <Award className="w-3.5 h-3.5 text-primary" />
+                {(user as any).group}
+              </span>
+            )}
+            {user?.specialization && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border/60 text-foreground">
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                {user.specialization}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6">
