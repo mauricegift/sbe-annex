@@ -56,12 +56,12 @@ const Terms: React.FC = () => {
                 </CardHeader>
                 <CardContent className="prose prose-sm dark:prose-invert max-w-none">
                   <p className="text-muted-foreground leading-relaxed">
-                    Welcome to BBM Annex! These Terms of Service ("Terms") govern your use of our educational platform 
-                    and services. By accessing or using BBM Annex, you agree to be bound by these Terms. If you do not 
+                    Welcome to SBE Annex! These Terms of Service ("Terms") govern your use of our educational platform 
+                    and services. By accessing or using SBE Annex, you agree to be bound by these Terms. If you do not 
                     agree to these Terms, please do not use our services.
                   </p>
                   <p className="text-muted-foreground leading-relaxed">
-                    BBM Annex is an academic resource sharing platform designed to help students access study materials, 
+                    SBE Annex is an academic resource sharing platform designed to help students access study materials, 
                     notes, past papers, and educational content.
                   </p>
                 </CardContent>
@@ -146,11 +146,11 @@ const Terms: React.FC = () => {
                 <CardContent className="space-y-4 text-muted-foreground text-sm">
                   <p>
                     <strong className="text-foreground">Your Content:</strong> You retain ownership of the content you upload. 
-                    By uploading content, you grant BBM Annex a non-exclusive, worldwide license to display, distribute, 
+                    By uploading content, you grant SBE Annex a non-exclusive, worldwide license to display, distribute, 
                     and make your content available to other users on the platform.
                   </p>
                   <p>
-                    <strong className="text-foreground">Platform Content:</strong> The BBM Annex platform, including its design, 
+                    <strong className="text-foreground">Platform Content:</strong> The SBE Annex platform, including its design, 
                     features, and functionality, is owned by us and protected by intellectual property laws.
                   </p>
                   <p>
@@ -173,7 +173,7 @@ const Terms: React.FC = () => {
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground text-sm">
                   <p>
-                    BBM Annex is provided "as is" without warranties of any kind. We do not guarantee the accuracy, 
+                    SBE Annex is provided "as is" without warranties of any kind. We do not guarantee the accuracy, 
                     completeness, or reliability of any content uploaded by users.
                   </p>
                   <p>
@@ -202,8 +202,8 @@ const Terms: React.FC = () => {
                     If you have any questions about these Terms of Service, please contact us at:
                   </p>
                   <p className="mt-2">
-                    <a href="mailto:bbm@giftedtech.co.ke" className="text-primary hover:underline">
-                      bbm@giftedtech.co.ke
+                    <a href="mailto:sbe@giftedtech.co.ke" className="text-primary hover:underline">
+                      sbe@giftedtech.co.ke
                     </a>
                   </p>
                 </CardContent>
@@ -218,7 +218,7 @@ const Terms: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <p>By using BBM Annex, you acknowledge that you have read and understood these Terms of Service.</p>
+            <p>By using SBE Annex, you acknowledge that you have read and understood these Terms of Service.</p>
           </motion.div>
         </div>
       </div>
