@@ -2643,161 +2643,187 @@ const AdminDashboard: React.FC = () => {
               </CardTitle>
               <p className="text-sm text-muted-foreground">Manage academic programme groups and their specializations. Changes apply site-wide immediately.</p>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Add New Group */}
-              <div className="p-4 border border-dashed border-primary/30 rounded-xl bg-primary/5 space-y-3">
-                <p className="font-semibold text-sm">Add New Group</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Programme Name *</Label>
-                    <Input placeholder="e.g. Bachelor of Commerce" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Code * (e.g. SBE)</Label>
-                    <Input placeholder="e.g. SBE" value={newGroupCode} onChange={e => setNewGroupCode(e.target.value.toUpperCase())} className="h-9 text-sm uppercase" maxLength={10} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Description</Label>
-                    <Input placeholder="Short description" value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} className="h-9 text-sm" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Specializations (comma-separated)</Label>
-                  <Input placeholder="e.g. MARKETING, ACCOUNTING, FINANCE" value={newGroupSpecs} onChange={e => setNewGroupSpecs(e.target.value)} className="h-9 text-sm" />
-                  <p className="text-xs text-muted-foreground">Enter specialization names separated by commas. They will be stored in uppercase.</p>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={addingGroup || !newGroupName.trim() || !newGroupCode.trim()}
-                  onClick={async () => {
-                    setAddingGroup(true);
-                    try {
-                      const specs = newGroupSpecs.split(',').map(s => s.trim()).filter(Boolean);
-                      await adminAPI.createGroup({ name: newGroupName, code: newGroupCode, description: newGroupDesc, specializations: specs });
-                      toast({ title: 'Group created!', description: `${newGroupCode} group has been created.` });
-                      setNewGroupName(''); setNewGroupCode(''); setNewGroupDesc(''); setNewGroupSpecs('');
-                      fetchGroups();
-                    } catch (e: any) {
-                      toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed to create group', variant: 'destructive' });
-                    } finally {
-                      setAddingGroup(false);
-                    }
-                  }}
-                >
-                  {addingGroup ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <><BookOpen className="w-4 h-4 mr-1" />Add Group</>}
-                </Button>
-              </div>
+            <CardContent>
+              <Tabs defaultValue="manage" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="manage" className="flex items-center gap-2">
+                    <Edit className="w-4 h-4" />
+                    Manage Groups
+                  </TabsTrigger>
+                  <TabsTrigger value="add" className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    Add New Group
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Existing Groups */}
-              {groupsLoading ? (
-                <div className="text-center py-8 text-muted-foreground">Loading groups...</div>
-              ) : groups.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No groups yet. Create one above.</div>
-              ) : (
-                <div className="space-y-4">
-                  {groups.map(group => (
-                    <div key={group.id} className="border rounded-xl overflow-hidden">
-                      <div className="flex items-center justify-between p-4 bg-muted/30">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="default" className="text-xs">{group.code}</Badge>
-                            <span className="font-semibold">{group.name}</span>
+                {/* Sub-tab 1: Manage existing groups */}
+                <TabsContent value="manage" className="mt-0">
+                  {groupsLoading ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                      Loading groups...
+                    </div>
+                  ) : groups.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <GraduationCap className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                      <p>No groups yet. Switch to "Add New Group" to create one.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {groups.map(group => (
+                        <div key={group.id} className="border rounded-xl overflow-hidden">
+                          <div className="flex items-center justify-between p-4 bg-muted/30">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="default" className="text-xs">{group.code}</Badge>
+                                <span className="font-semibold text-foreground">{group.name}</span>
+                              </div>
+                              {group.description && <p className="text-xs text-muted-foreground mt-0.5">{group.description}</p>}
+                              <p className="text-xs text-muted-foreground mt-1">{group.specializations?.length || 0} specialization(s)</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={async () => {
+                                if (!confirm(`Delete group "${group.name}"? Existing users and content won't be affected.`)) return;
+                                try {
+                                  await adminAPI.deleteGroup(group.id);
+                                  toast({ title: 'Group deleted' });
+                                  fetchGroups();
+                                } catch (e: any) {
+                                  toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed to delete', variant: 'destructive' });
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </div>
-                          {group.description && <p className="text-xs text-muted-foreground mt-0.5">{group.description}</p>}
-                          <p className="text-xs text-muted-foreground mt-1">{group.specializations?.length || 0} specializations</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={async () => {
-                            if (!confirm(`Delete group "${group.name}"? Existing users and content won't be affected.`)) return;
-                            try {
-                              await adminAPI.deleteGroup(group.id);
-                              toast({ title: 'Group deleted' });
-                              fetchGroups();
-                            } catch (e: any) {
-                              toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed to delete', variant: 'destructive' });
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        {/* Specializations list */}
-                        <div className="flex flex-wrap gap-2">
-                          {(group.specializations || []).map((spec: string) => (
-                            <div key={spec} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                              <span>{spec}</span>
-                              <button
-                                className="ml-1 text-primary/60 hover:text-destructive transition-colors"
+                          <div className="p-4 space-y-3">
+                            {/* Specializations list */}
+                            <div className="flex flex-wrap gap-2">
+                              {(group.specializations || []).map((spec: string) => (
+                                <div key={spec} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                                  <span>{spec}</span>
+                                  <button
+                                    className="ml-1 text-primary/60 hover:text-destructive transition-colors"
+                                    onClick={async () => {
+                                      if (!confirm(`Remove specialization "${spec}" from ${group.name}?`)) return;
+                                      try {
+                                        await adminAPI.removeSpecialization(group.id, spec);
+                                        toast({ title: 'Removed', description: `${spec} removed from ${group.name}` });
+                                        fetchGroups();
+                                      } catch (e: any) {
+                                        toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed', variant: 'destructive' });
+                                      }
+                                    }}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                              {(group.specializations || []).length === 0 && (
+                                <p className="text-xs text-muted-foreground italic">No specializations yet</p>
+                              )}
+                            </div>
+                            {/* Add specialization inline */}
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Add specialization (e.g. MARKETING)"
+                                value={newSpecInputs[group.id] || ''}
+                                onChange={e => setNewSpecInputs(prev => ({ ...prev, [group.id]: e.target.value.toUpperCase() }))}
+                                className="h-8 text-xs uppercase"
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const specName = newSpecInputs[group.id]?.trim();
+                                    if (!specName) return;
+                                    try {
+                                      await adminAPI.addSpecialization(group.id, specName);
+                                      toast({ title: 'Added', description: `${specName} added to ${group.name}` });
+                                      setNewSpecInputs(prev => ({ ...prev, [group.id]: '' }));
+                                      fetchGroups();
+                                    } catch (e: any) {
+                                      toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed', variant: 'destructive' });
+                                    }
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-3 text-xs"
                                 onClick={async () => {
-                                  if (!confirm(`Remove specialization "${spec}" from ${group.name}?`)) return;
+                                  const specName = newSpecInputs[group.id]?.trim();
+                                  if (!specName) return;
                                   try {
-                                    await adminAPI.removeSpecialization(group.id, spec);
-                                    toast({ title: 'Removed', description: `${spec} removed from ${group.name}` });
+                                    await adminAPI.addSpecialization(group.id, specName);
+                                    toast({ title: 'Added', description: `${specName} added to ${group.name}` });
+                                    setNewSpecInputs(prev => ({ ...prev, [group.id]: '' }));
                                     fetchGroups();
                                   } catch (e: any) {
                                     toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed', variant: 'destructive' });
                                   }
                                 }}
                               >
-                                <X className="w-3 h-3" />
-                              </button>
+                                Add
+                              </Button>
                             </div>
-                          ))}
-                          {(group.specializations || []).length === 0 && (
-                            <p className="text-xs text-muted-foreground italic">No specializations yet</p>
-                          )}
+                          </div>
                         </div>
-                        {/* Add specialization */}
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Add specialization (e.g. MARKETING)"
-                            value={newSpecInputs[group.id] || ''}
-                            onChange={e => setNewSpecInputs(prev => ({ ...prev, [group.id]: e.target.value.toUpperCase() }))}
-                            className="h-8 text-xs uppercase"
-                            onKeyDown={async (e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const specName = newSpecInputs[group.id]?.trim();
-                                if (!specName) return;
-                                try {
-                                  await adminAPI.addSpecialization(group.id, specName);
-                                  toast({ title: 'Added', description: `${specName} added to ${group.name}` });
-                                  setNewSpecInputs(prev => ({ ...prev, [group.id]: '' }));
-                                  fetchGroups();
-                                } catch (e: any) {
-                                  toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed', variant: 'destructive' });
-                                }
-                              }
-                            }}
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-3 text-xs"
-                            onClick={async () => {
-                              const specName = newSpecInputs[group.id]?.trim();
-                              if (!specName) return;
-                              try {
-                                await adminAPI.addSpecialization(group.id, specName);
-                                toast({ title: 'Added', description: `${specName} added to ${group.name}` });
-                                setNewSpecInputs(prev => ({ ...prev, [group.id]: '' }));
-                                fetchGroups();
-                              } catch (e: any) {
-                                toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed', variant: 'destructive' });
-                              }
-                            }}
-                          >
-                            Add
-                          </Button>
-                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Sub-tab 2: Add new group */}
+                <TabsContent value="add" className="mt-0">
+                  <div className="p-5 border border-dashed border-primary/30 rounded-xl bg-primary/5 space-y-4">
+                    <div>
+                      <p className="font-semibold text-sm text-foreground mb-0.5">Create a New Group</p>
+                      <p className="text-xs text-muted-foreground">Fill in the details below to add a new study group and its specializations.</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Programme Name *</Label>
+                        <Input placeholder="e.g. Bachelor of Commerce" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="h-9 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Code * (e.g. SBE)</Label>
+                        <Input placeholder="e.g. SBE" value={newGroupCode} onChange={e => setNewGroupCode(e.target.value.toUpperCase())} className="h-9 text-sm uppercase" maxLength={10} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Description</Label>
+                        <Input placeholder="Short description" value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} className="h-9 text-sm" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Specializations (comma-separated)</Label>
+                      <Input placeholder="e.g. MARKETING, ACCOUNTING, FINANCE" value={newGroupSpecs} onChange={e => setNewGroupSpecs(e.target.value)} className="h-9 text-sm" />
+                      <p className="text-xs text-muted-foreground">Enter specialization names separated by commas. They will be stored in uppercase.</p>
+                    </div>
+                    <Button
+                      disabled={addingGroup || !newGroupName.trim() || !newGroupCode.trim()}
+                      onClick={async () => {
+                        setAddingGroup(true);
+                        try {
+                          const specs = newGroupSpecs.split(',').map(s => s.trim()).filter(Boolean);
+                          await adminAPI.createGroup({ name: newGroupName, code: newGroupCode, description: newGroupDesc, specializations: specs });
+                          toast({ title: 'Group created!', description: `${newGroupCode} group has been created.` });
+                          setNewGroupName(''); setNewGroupCode(''); setNewGroupDesc(''); setNewGroupSpecs('');
+                          fetchGroups();
+                        } catch (e: any) {
+                          toast({ title: 'Failed', description: e.response?.data?.detail || 'Failed to create group', variant: 'destructive' });
+                        } finally {
+                          setAddingGroup(false);
+                        }
+                      }}
+                    >
+                      {addingGroup ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
+                      Create Group
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
