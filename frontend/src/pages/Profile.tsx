@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { userAPI, authAPI, profileAPI } from '../lib/api';
+import { userAPI, authAPI, profileAPI, groupsAPI } from '../lib/api';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -10,14 +10,13 @@ import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from '../lib/toast';
-import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle } from 'lucide-react';
+import { Camera, Save, Loader2, Key, ShieldAlert, Trash2, RefreshCw, User, Award, AlertTriangle, Check, Clock } from 'lucide-react';
 import { ProfileSkeleton } from '../components/PageSkeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import Cropper from 'react-easy-crop';
 import { Dialog, DialogContent } from '../components/ui/dialog';
 import getCroppedImg from '../lib/cropImage';
 import { isIOSDevice, logMobileUploadDebug } from '../utils/mobileUploadFix';
-import { groupsAPI } from '../lib/api';
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
