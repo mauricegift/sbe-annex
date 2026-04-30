@@ -80,7 +80,7 @@ const AdminDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Get initial tab from URL or default to 'pending'
-  const validTabs = ['pending', 'notes', 'papers', 'users', 'blog'];
+  const validTabs = ['pending', 'notes', 'papers', 'users', 'blog', 'groups', 'testimonials'];
   const urlTab = searchParams.get('tab');
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'pending';
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -139,8 +139,58 @@ const AdminDashboard: React.FC = () => {
   const [blogsPagination, setBlogsPagination] = useState({ page: 1, total: 0, hasNext: false });
   const [blogsSearch, setBlogsSearch] = useState('');
   const [editingBlog, setEditingBlog] = useState<any>(null);
+
+    // Testimonials state
+    const [adminTestimonials, setAdminTestimonials] = useState<any[]>([]);
+    const [testimonialsLoading, setTestimonialsLoading] = useState(false);
+    const [testimonialsFilter, setTestimonialsFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   
-  // Document viewer state
+  // Testimonials admin helpers
+    const fetchAdminTestimonials = async () => {
+      setTestimonialsLoading(true);
+      try {
+        const res = await fetch('/api/testimonials/admin/all', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        const data = await res.json();
+        setAdminTestimonials(data.data || []);
+      } catch (e) {
+        console.error('Failed to fetch testimonials', e);
+      } finally {
+        setTestimonialsLoading(false);
+      }
+    };
+
+    const updateTestimonialStatus = async (id: string, newStatus: 'approved' | 'rejected' | 'pending') => {
+      const res = await fetch(`/api/testimonials/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) { toast({ title: 'Failed to update status', variant: 'destructive' }); return; }
+      toast({ title: `Testimonial ${newStatus}` });
+      setAdminTestimonials(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+    };
+
+    const deleteTestimonial = async (id: string) => {
+      setConfirmDialog({
+        open: true,
+        title: 'Delete Testimonial',
+        description: 'Are you sure you want to permanently delete this testimonial? This cannot be undone.',
+        variant: 'destructive',
+        action: async () => {
+          const res = await fetch(`/api/testimonials/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          });
+          if (!res.ok) { toast({ title: 'Failed to delete', variant: 'destructive' }); return; }
+          toast({ title: 'Testimonial deleted' });
+          setAdminTestimonials(prev => prev.filter(t => t.id !== id));
+        },
+      });
+    };
+
+    // Document viewer state
   const [viewingDocument, setViewingDocument] = useState<any>(null);
   const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
   
@@ -1233,7 +1283,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 sm:space-y-6">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto gap-1">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 h-auto gap-1">
           <TabsTrigger value="pending" className="text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2">Pending</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2">Notes</TabsTrigger>
           <TabsTrigger value="papers" className="text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2">Papers</TabsTrigger>
@@ -2720,7 +2770,115 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </TabsContent>
 
-        </Tabs>
+
+          <TabsContent value="testimonials" className="space-y-4">
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">Testimonials</h3>
+                    <p className="text-sm text-muted-foreground">Approve, reject, or delete student testimonials</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(['all', 'pending', 'approved', 'rejected'] as const).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setTestimonialsFilter(f)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${testimonialsFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-primary/50 text-muted-foreground'}`}
+                      >
+                        {f.charAt(0).toUpperCase() + f.slice(1)}
+                      </button>
+                    ))}
+                    <button
+                      onClick={fetchAdminTestimonials}
+                      className="p-1.5 rounded-md border border-border hover:bg-muted transition"
+                      title="Refresh"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {testimonialsLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (() => {
+                  const filtered = adminTestimonials.filter(t => testimonialsFilter === 'all' || t.status === testimonialsFilter);
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-16 text-muted-foreground">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="font-medium">No testimonials found</p>
+                        <p className="text-sm mt-1">
+                          {testimonialsFilter !== 'all' ? `No ${testimonialsFilter} testimonials.` : 'No testimonials have been submitted yet.'}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {filtered.map((t: any) => (
+                        <div key={t.id} className="border border-border rounded-xl p-4 flex flex-col gap-3 bg-card">
+                          <div className="flex items-start gap-3">
+                            {t.profile_picture ? (
+                              <img src={t.profile_picture} alt={t.name} className="w-10 h-10 rounded-full object-cover border border-border flex-shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground flex-shrink-0">
+                                {t.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{t.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{t.role || '—'}</p>
+                              <div className="flex gap-0.5 mt-1">
+                                {[1,2,3,4,5].map(s => (
+                                  <Star key={s} className={`w-3.5 h-3.5 ${s <= (t.rating || 5) ? 'text-warning fill-warning' : 'text-muted-foreground'}`} />
+                                ))}
+                              </div>
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                              t.status === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                              t.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            }`}>{t.status}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-3 italic">"{t.message}"</p>
+                          <p className="text-xs text-muted-foreground">{t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</p>
+                          <div className="flex gap-2 flex-wrap pt-1 border-t border-border mt-auto">
+                            {t.status !== 'approved' && (
+                              <button
+                                onClick={() => updateTestimonialStatus(t.id, 'approved')}
+                                className="flex-1 flex items-center justify-center gap-1.5 text-xs px-2 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 font-medium transition"
+                              >
+                                <Check className="w-3.5 h-3.5" />Approve
+                              </button>
+                            )}
+                            {t.status !== 'rejected' && (
+                              <button
+                                onClick={() => updateTestimonialStatus(t.id, 'rejected')}
+                                className="flex-1 flex items-center justify-center gap-1.5 text-xs px-2 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 font-medium transition"
+                              >
+                                <X className="w-3.5 h-3.5" />Reject
+                              </button>
+                            )}
+                            <button
+                              onClick={() => deleteTestimonial(t.id)}
+                              className="flex-1 flex items-center justify-center gap-1.5 text-xs px-2 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 font-medium transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          </Tabs>
 
         {/* Place DocumentViewer here */}
         {viewingDocument && (
