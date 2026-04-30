@@ -2571,8 +2571,8 @@ const AdminDashboard: React.FC = () => {
                     <Input placeholder="e.g. Bachelor of Commerce" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Code * (e.g. BBM)</Label>
-                    <Input placeholder="e.g. BBM" value={newGroupCode} onChange={e => setNewGroupCode(e.target.value.toUpperCase())} className="h-9 text-sm uppercase" maxLength={10} />
+                    <Label className="text-xs">Code * (e.g. SBE)</Label>
+                    <Input placeholder="e.g. SBE" value={newGroupCode} onChange={e => setNewGroupCode(e.target.value.toUpperCase())} className="h-9 text-sm uppercase" maxLength={10} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Description</Label>
