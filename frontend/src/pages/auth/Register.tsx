@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { authAPI, groupsAPI } from "../../lib/api";
+import { authAPI } from "../../lib/api";
 import { toast } from "../../lib/toast";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -25,13 +25,6 @@ const calculatePasswordStrength = (password: string) => {
   return { score: (score / 6) * 100, label: "Strong", color: "bg-green-500" };
 };
 
-interface Group {
-  id: string;
-  code: string;
-  name: string;
-  specializations: string[];
-}
-
 const Register: React.FC = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -43,8 +36,6 @@ const Register: React.FC = () => {
     confirmPassword: "",
     year_of_study: "",
     semester_of_study: "",
-    group: "",
-    specialization: "",
     verification_method: "email" as "email" | "sms",
     phone_number: "",
   });
@@ -53,7 +44,6 @@ const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingFirst, setIsCheckingFirst] = useState(true);
   const [isFirstUser, setIsFirstUser] = useState(false);
-  const [groups, setGroups] = useState<Group[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [iconPulse, setIconPulse] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -68,12 +58,8 @@ const Register: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const [firstUserRes, groupsRes] = await Promise.all([
-          authAPI.checkFirstUser(),
-          groupsAPI.getGroups(),
-        ]);
+        const firstUserRes = await authAPI.checkFirstUser();
         setIsFirstUser(firstUserRes.data?.is_first_user ?? false);
-        setGroups(groupsRes.data || []);
       } catch {
         setIsFirstUser(false);
       } finally {
@@ -82,9 +68,6 @@ const Register: React.FC = () => {
     };
     init();
   }, []);
-
-  const yearOfStudy = parseInt(formData.year_of_study) || 0;
-  const needsGroupSpec = !isFirstUser && yearOfStudy >= 3;
 
   const validateForm = () => {
     const newErrors: string[] = [];
@@ -102,9 +85,6 @@ const Register: React.FC = () => {
     if (formData.verification_method === "sms") {
       if (!formData.phone_number) newErrors.push("Phone number is required for SMS verification");
       else if (!/^(07|01)[0-9]{8}$/.test(formData.phone_number)) newErrors.push("Please enter a valid Kenyan phone number (e.g., 0712345678)");
-    }
-    if (needsGroupSpec) {
-      if (!formData.group) newErrors.push("Study group is required for Year 3 and above");
     }
     if (!acceptedTerms) newErrors.push("You must accept the Terms and Conditions to register");
     return newErrors;
@@ -127,8 +107,6 @@ const Register: React.FC = () => {
         verification_method: formData.verification_method,
       };
       if (formData.phone_number) payload.phone_number = formData.phone_number;
-      if (formData.group) payload.group = formData.group;
-
       await register(payload);
       navigate("/verify", {
         state: {
@@ -149,11 +127,7 @@ const Register: React.FC = () => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    if (name === "group") {
-      setFormData({ ...formData, group: value, specialization: "" });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const inputClass = (field: string) =>
@@ -275,25 +249,6 @@ const Register: React.FC = () => {
                   </Select>
                 </div>
               </div>
-
-              {needsGroupSpec && (
-                <div className="space-y-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                  <p className="text-xs font-medium text-primary">Year 3+ students must select their study group</p>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Study Group *</Label>
-                    <Select value={formData.group} onValueChange={v => handleSelectChange("group", v)}>
-                      <SelectTrigger className="h-12 border-2 border-border/50">
-                        <SelectValue placeholder={groups.length === 0 ? "No groups available — contact admin" : "Select your study group"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {groups.map(g => (
-                          <SelectItem key={g.code} value={g.code}>{g.name} ({g.code})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Verification Method *</Label>
