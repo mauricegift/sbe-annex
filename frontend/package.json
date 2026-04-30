@@ -1,7 +1,7 @@
 {
-  "name": "bbm-annex",
+  "name": "sbe-annex",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -40,7 +40,6 @@
     "@radix-ui/react-toggle": "^1.1.0",
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.4",
-    "@supabase/supabase-js": "^2.50.3",
     "@tanstack/react-query": "^5.56.2",
     "@types/react-toastify": "^4.0.2",
     "axios": "^1.10.0",
