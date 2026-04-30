@@ -4,7 +4,6 @@
 
 **Live site:** https://bbm.giftedtech.co.ke  
 **Backend API:** https://bbmback.giftedtech.co.ke  
-**Backend repo:** https://github.com/mauricegift/bbmannex-backend
 
 ---
 
