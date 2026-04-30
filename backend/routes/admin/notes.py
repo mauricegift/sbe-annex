@@ -7,7 +7,9 @@ from db.database import db
 from helpers.auth import get_admin_user
 from models.document import DocumentUpdate, DocumentStatusUpdate, Status
 from datetime import datetime
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
@@ -37,6 +39,25 @@ async def update_note_status(
         {"id": note_id},
         {"$set": {"status": update.status, "feedback": update.feedback, "updated_at": datetime.utcnow()}},
     )
+
+    # Notify uploader if they have notifications enabled
+    if update.status in (Status.APPROVED, Status.REJECTED):
+        uploader = await db.users.find_one({"id": note.get("uploaded_by")})
+        if uploader and uploader.get("notify_on_upload_decision", True):
+            try:
+                from utils.email_service import send_upload_notification
+                decision = "approved" if update.status == Status.APPROVED else "rejected"
+                await send_upload_notification(
+                    email=uploader["email"],
+                    username=uploader["username"],
+                    doc_type="note",
+                    title=note.get("course_title", note.get("title", "your note")),
+                    decision=decision,
+                    feedback=update.feedback or "",
+                )
+            except Exception as exc:
+                logger.warning(f"Upload notification failed for note {note_id}: {exc}")
+
     return {"message": f"Note {update.status} successfully."}
 
 
