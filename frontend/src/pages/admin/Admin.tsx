@@ -3301,7 +3301,7 @@ const AdminDashboard: React.FC = () => {
       course_code: note.course_code || '',
       year_of_study: note.year_of_study || 1,
       semester_of_study: note.semester_of_study || 1,
-      specialization: note.specialization || 'COMMON',
+      specializations: note.specialization ? (Array.isArray(note.specialization) ? note.specialization : [note.specialization]) : ['COMMON'],
       description: note.description || '',
       status: note.status || 'pending',
       feedback: note.feedback || '',
@@ -3391,7 +3391,7 @@ const AdminDashboard: React.FC = () => {
       e.preventDefault();
       setIsLoading(true);
       try {
-        await onSave(note.id, formData);
+        await onSave(note.id, { ...formData, specialization: formData.specializations });
       } finally {
         setIsLoading(false);
       }
@@ -3464,13 +3464,14 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             {formData.year_of_study >= 3 && (
-              <ContentSpecializationSelect
-                specializations={contentSpecializations}
-                value={formData.specialization}
-                onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
-                label="Specialization"
-                placeholder="Select specialization"
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Specialization</label>
+                <ContentSpecializationMulti
+                  specializations={contentSpecializations.filter(s => s !== 'COMMON').concat(['COMMON'])}
+                  value={formData.specializations || []}
+                  onChange={(vals) => setFormData(prev => ({ ...prev, specializations: vals }))}
+                />
+              </div>
             )}
 
             {/* File Upload Section */}
@@ -3630,7 +3631,7 @@ const AdminDashboard: React.FC = () => {
       course_code: paper.course_code || '',
       year_of_study: paper.year_of_study || 1,
       semester_of_study: paper.semester_of_study || 1,
-      specialization: paper.specialization || 'COMMON',
+      specializations: paper.specialization ? (Array.isArray(paper.specialization) ? paper.specialization : [paper.specialization]) : ['COMMON'],
       description: paper.description || '',
       status: paper.status || 'pending',
       feedback: paper.feedback || '',
@@ -3720,7 +3721,7 @@ const AdminDashboard: React.FC = () => {
       e.preventDefault();
       setIsLoading(true);
       try {
-        await onSave(paper.id, formData);
+        await onSave(paper.id, { ...formData, specialization: formData.specializations });
       } finally {
         setIsLoading(false);
       }
@@ -3793,13 +3794,14 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             {formData.year_of_study >= 3 && (
-              <ContentSpecializationSelect
-                specializations={contentSpecializations}
-                value={formData.specialization}
-                onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
-                label="Specialization"
-                placeholder="Select specialization"
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Specialization</label>
+                <ContentSpecializationMulti
+                  specializations={contentSpecializations.filter(s => s !== 'COMMON').concat(['COMMON'])}
+                  value={formData.specializations || []}
+                  onChange={(vals) => setFormData(prev => ({ ...prev, specializations: vals }))}
+                />
+              </div>
             )}
 
             {/* File Upload Section */}
@@ -4400,5 +4402,28 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
     </>
   );
 };
+
+
+const ContentSpecializationMulti: React.FC<{
+  specializations: string[];
+  value: string[];
+  onChange: (vals: string[]) => void;
+}> = ({ specializations, value, onChange }) => (
+  <div className="space-y-2">
+    <p className="text-xs text-muted-foreground">Select all that apply</p>
+    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[44px]">
+      {specializations.map(s => {
+        const sel = value.includes(s);
+        return (
+          <button key={s} type="button"
+            onClick={() => onChange(sel ? value.filter(x => x !== s) : [...value, s])}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${sel ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border hover:border-primary/50'}`}
+          >{s === 'COMMON' ? 'COMMON (all)' : s}</button>
+        );
+      })}
+    </div>
+    {value.length === 0 && <p className="text-xs text-destructive">Select at least one</p>}
+  </div>
+);
 
 export default Admin;
