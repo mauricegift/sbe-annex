@@ -147,7 +147,7 @@ async def request_email_change(
         "iat": datetime.utcnow(),
     }
     token = _jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    confirm_link = f"{BASE_URL}/api/user/confirm-email-change?token={token}"
+    confirm_link = f"{FRONTEND_URL}/confirm-email-change?token={token}"
 
     # Send confirmation email to the NEW email address
     try:
@@ -169,23 +169,23 @@ async def request_email_change(
     return {"message": f"A confirmation link has been sent to {new_email}. Click it to complete the change."}
 
 
-@router.get("/confirm-email-change")
-async def confirm_email_change(token: str):
-    """Called when the user clicks the email-change confirmation link."""
+@router.post("/confirm-email-change", response_model=Dict[str, Any])
+async def confirm_email_change(body: Dict[str, Any]):
+    """Frontend calls this after the user clicks the email-change link. Accepts JSON {token}."""
     import jwt as _jwt
     SECRET_KEY = os.getenv("SECRET_KEY", "sbe-annex-secret-please-change-me")
     ALGORITHM = os.getenv("ALGORITHM", "HS256")
-    from fastapi.responses import RedirectResponse
+    token = body.get("token", "")
 
     try:
         payload = _jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except _jwt.ExpiredSignatureError:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=expired")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="expired")
     except _jwt.PyJWTError:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid")
 
     if payload.get("type") != "email_change":
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid")
 
     old_email = payload.get("old_email")
     new_email = payload.get("new_email")
@@ -193,16 +193,14 @@ async def confirm_email_change(token: str):
 
     user = await db.users.find_one({"id": user_id})
     if not user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invalid")
 
-    # Verify the token still matches what we stored (prevents replay)
     if user.get("email_change_token") != token:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid")
 
-    # Check new email is still free
     conflict = await db.users.find_one({"email": new_email})
     if conflict and conflict.get("id") != user_id:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=taken")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="taken")
 
     await db.users.update_one(
         {"id": user_id},
@@ -210,7 +208,7 @@ async def confirm_email_change(token: str):
     )
 
     logger.info("Email changed for user %s: %s -> %s", user_id, old_email, new_email)
-    return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_changed=true")
+    return {"success": True, "email": new_email, "message": "Email address updated successfully."}
 
 
 # ── Phone change ──────────────────────────────────────────────────────────────
