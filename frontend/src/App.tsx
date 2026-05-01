@@ -25,6 +25,9 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));
 const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail"));
+const VerifyEmailLink = lazy(() => import("./pages/auth/VerifyEmailLink"));
+const ConfirmDelete = lazy(() => import("./pages/auth/ConfirmDelete"));
+const ConfirmEmailChange = lazy(() => import("./pages/ConfirmEmailChange"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 const Admin = lazy(() => import("./pages/admin/Admin"));
@@ -77,6 +80,9 @@ const App = () => (
                   <Route path="login" element={<Login />} />
                   <Route path="register" element={<Register />} />
                   <Route path="verify" element={<VerifyEmail />} />
+                  <Route path="verify-email" element={<VerifyEmailLink />} />
+                  <Route path="confirm-delete" element={<ConfirmDelete />} />
+                  <Route path="confirm-email-change" element={<ConfirmEmailChange />} />
                   <Route path="forgot-password" element={<ForgotPassword />} />
                   <Route path="reset-password" element={<ResetPassword />} />
                   <Route path="terms" element={<Terms />} />
