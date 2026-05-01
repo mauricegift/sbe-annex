@@ -14,8 +14,8 @@ from utils.sms_service import send_sms_otp
 logger = logging.getLogger(__name__)
 
 RESEND_COOLDOWN_SECONDS: int = int(os.getenv("RESEND_COOLDOWN_SECONDS", "60"))
-BASE_URL: str = os.getenv("BASE_URL", "https://sbeback.giftedtech.co.ke")
-FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://sbe.giftedtech.co.ke")
+BASE_URL: str = os.getenv("BASE_URL", "https://bbmback.giftedtech.co.ke")
+FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://bbm.giftedtech.co.ke")
 
 
 def cooldown_remaining(last_sent_at: datetime | None) -> int:
@@ -43,7 +43,7 @@ async def dispatch_signup_verification(user_data: dict) -> tuple[bool, str]:
         return ok, "sms"
     else:
         token = create_email_token(user_data["email"], "verify")
-        link = f"{BASE_URL}/api/auth/verify-link?token={token}"
+        link = f"{FRONTEND_URL}/verify-email?token={token}"
         ok = await send_email_link(user_data["email"], user_data["username"], link, "verify")
         return ok, "email"
 
@@ -64,7 +64,7 @@ async def dispatch_resend_verification(user_data: dict) -> tuple[bool, str]:
         return ok, "sms", code
     else:
         token = create_email_token(user_data["email"], "verify")
-        link = f"{BASE_URL}/api/auth/verify-link?token={token}"
+        link = f"{FRONTEND_URL}/verify-email?token={token}"
         ok = await send_email_link(user_data["email"], user_data["username"], link, "resend_verify")
         return ok, "email", None
 
@@ -94,38 +94,6 @@ async def dispatch_password_reset(user_data: dict) -> tuple[bool, str, str | Non
         return ok, "email", None
 
 
-async def dispatch_email_change(user_data: dict, new_email: str) -> tuple[bool, str]:
-    """
-    Send an email-change confirmation link to the NEW email address.
-    The token carries both the old email (to find the user) and the new_email.
-    Returns (success, method='email')
-    """
-    token = create_email_token(
-        user_data["email"], "change_email",
-        expires_minutes=30,
-        extra={"new_email": new_email},
-    )
-    link = f"{BASE_URL}/api/auth/confirm-email-change?token={token}"
-    ok = await send_email_link(
-        new_email,
-        user_data["username"],
-        link,
-        "change_email",
-        extra_kwargs={"new_email": new_email},
-    )
-    return ok, "email"
-
-
-async def dispatch_phone_change_otp(new_phone: str) -> tuple[bool, str, str]:
-    """
-    Send an OTP to the new phone number for phone-change verification.
-    Returns (success, method='sms', code)
-    """
-    code = generate_otp()
-    ok = await send_sms_otp(new_phone, code)
-    return ok, "sms", code
-
-
 async def dispatch_delete_confirmation(user_data: dict) -> tuple[bool, str, str | None]:
     """
     Send account deletion confirmation.
@@ -144,6 +112,6 @@ async def dispatch_delete_confirmation(user_data: dict) -> tuple[bool, str, str 
         return ok, "sms", code
     else:
         token = create_email_token(email, "delete")
-        link = f"{BASE_URL}/api/auth/confirm-delete-link?token={token}"
+        link = f"{FRONTEND_URL}/confirm-delete?token={token}"
         ok = await send_email_link(email, username, link, "delete")
         return ok, "email", None
