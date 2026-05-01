@@ -153,7 +153,7 @@ const AdminDashboard: React.FC = () => {
       setTestimonialsLoading(true);
       try {
         const res = await fetch('/api/testimonials/admin/all', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
         });
         const data = await res.json();
         setAdminTestimonials(data.data || []);
@@ -167,7 +167,7 @@ const AdminDashboard: React.FC = () => {
     const updateTestimonialStatus = async (id: string, newStatus: 'approved' | 'rejected' | 'pending') => {
       const res = await fetch(`/api/testimonials/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('authToken')}` },
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) { toast({ title: 'Failed to update status', variant: 'destructive' }); return; }
@@ -184,7 +184,7 @@ const AdminDashboard: React.FC = () => {
         action: async () => {
           const res = await fetch(`/api/testimonials/${id}`, {
             method: 'DELETE',
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
           });
           if (!res.ok) { toast({ title: 'Failed to delete', variant: 'destructive' }); return; }
           toast({ title: 'Testimonial deleted' });
@@ -242,6 +242,12 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'testimonials') {
+      fetchAdminTestimonials();
+    }
+  }, [activeTab]);
 
   const fetchAllData = async () => {
     try {
@@ -1291,42 +1297,63 @@ const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-2 font-medium">
                 <Clock className="w-4 h-4" />
                 <span>Pending</span>
+                {(notesPagination.total + papersPagination.total) > 0 && (
+                  <Badge className="ml-1 h-5 min-w-5 px-1 text-xs bg-amber-500 text-white border-0">{notesPagination.total + papersPagination.total}</Badge>
+                )}
               </div>
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
                 <BookOpen className="w-4 h-4" />
                 <span>Notes</span>
+                {allNotesPagination.total > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-xs">{allNotesPagination.total}</Badge>
+                )}
               </div>
             </TabsTrigger>
             <TabsTrigger value="papers" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
                 <FileText className="w-4 h-4" />
                 <span>Papers</span>
+                {allPapersPagination.total > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-xs">{allPapersPagination.total}</Badge>
+                )}
               </div>
             </TabsTrigger>
             <TabsTrigger value="users" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
                 <Users className="w-4 h-4" />
                 <span>Users</span>
+                {usersPagination.total > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-xs">{usersPagination.total}</Badge>
+                )}
               </div>
             </TabsTrigger>
             <TabsTrigger value="blog" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
                 <BookMarked className="w-4 h-4" />
                 <span>Blog</span>
+                {blogsPagination.total > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-xs">{blogsPagination.total}</Badge>
+                )}
               </div>
             </TabsTrigger>
             <TabsTrigger value="groups" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
                 <Settings className="w-4 h-4" />
                 <span>Groups</span>
+                {groups.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-xs">{groups.length}</Badge>
+                )}
               </div>
             </TabsTrigger>
             <TabsTrigger value="testimonials" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
                 <MessageSquare className="w-4 h-4" />
                 <span>Reviews</span>
+                {adminTestimonials.filter(t => t.status === 'pending').length > 0 && (
+                  <Badge className="ml-1 h-5 min-w-5 px-1 text-xs bg-amber-500 text-white border-0">{adminTestimonials.filter(t => t.status === 'pending').length}</Badge>
+                )}
               </div>
             </TabsTrigger>
           </TabsList>
