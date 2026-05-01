@@ -139,8 +139,8 @@ const AdminDashboard: React.FC = () => {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [blogsPagination, setBlogsPagination] = useState({ page: 1, total: 0, hasNext: false });
   const [blogsSearch, setBlogsSearch] = useState('');
-  const [blogsGroupFilter, setBlogsGroupFilter] = useState('');
-  const [blogsSpecFilter, setBlogsSpecFilter] = useState('');
+  const [blogsGroupFilter, setBlogsGroupFilter] = useState('all');
+  const [blogsSpecFilter, setBlogsSpecFilter] = useState('all');
   const [editingBlog, setEditingBlog] = useState<any>(null);
 
     // Testimonials state
@@ -338,12 +338,12 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const fetchBlogs = async (page = 1, search = '', group = '', spec = '') => {
+  const fetchBlogs = async (page = 1, search = '', group = 'all', spec = 'all') => {
     try {
       const params: any = { page, limit: 10 };
       if (search) params.search = search;
-      if (group) params.group = group;
-      if (spec) params.specialization = spec;
+      if (group && group !== 'all') params.group = group;
+      if (spec && spec !== 'all') params.specialization = spec;
       
       const response = await blogAPI.getBlogs(params);
       if (response.data.data) {
@@ -2525,13 +2525,13 @@ const AdminDashboard: React.FC = () => {
                       onChange={(e) => setBlogsSearch(e.target.value)}
                       className="w-40"
                     />
-                    <Select value={blogsGroupFilter} onValueChange={(v) => { setBlogsGroupFilter(v); setBlogsSpecFilter(''); fetchBlogs(1, blogsSearch, v, ''); }}>
+                    <Select value={blogsGroupFilter} onValueChange={(v) => { setBlogsGroupFilter(v); setBlogsSpecFilter('all'); fetchBlogs(1, blogsSearch, v, 'all'); }}>
                       <SelectTrigger className="w-[130px]">
                         <SelectValue placeholder="All groups" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All groups</SelectItem>
-                        {groups.map(g => (
+                        <SelectItem value="all">All groups</SelectItem>
+                        {dynamicGroups.map(g => (
                           <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -2541,8 +2541,8 @@ const AdminDashboard: React.FC = () => {
                         <SelectValue placeholder="All specs" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All specializations</SelectItem>
-                        {(blogsGroupFilter ? (groups.find(g => g.code === blogsGroupFilter)?.specializations || []) : contentSpecializations).map(s => (
+                        <SelectItem value="all">All specializations</SelectItem>
+                        {(blogsGroupFilter && blogsGroupFilter !== 'all' ? (dynamicGroups.find(g => g.code === blogsGroupFilter)?.specializations || []) : contentSpecializations).map(s => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
                       </SelectContent>
@@ -3912,8 +3912,8 @@ const EditBlogDialog: React.FC<{
     title: blog.title || '',
     content: blog.content || '',
     thumbnail_url: blog.thumbnail_url || '',
-    target_group: blog.target_group || '',
-    target_specialization: blog.target_specialization || '',
+    target_group: blog.target_group || '__none',
+    target_specialization: blog.target_specialization || '__none',
   });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -3969,7 +3969,12 @@ const EditBlogDialog: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(blog.id, formData);
+    const payload = {
+      ...formData,
+      target_group: formData.target_group === '__none' ? '' : formData.target_group,
+      target_specialization: formData.target_specialization === '__none' ? '' : formData.target_specialization,
+    };
+    onSave(blog.id, payload);
   };
 
   return (
@@ -3995,12 +4000,12 @@ const EditBlogDialog: React.FC<{
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Target Group</Label>
-              <Select value={formData.target_group} onValueChange={(v) => setFormData(prev => ({...prev, target_group: v, target_specialization: ''}))} >
+              <Select value={formData.target_group} onValueChange={(v) => setFormData(prev => ({...prev, target_group: v, target_specialization: '__none'}))} >
                 <SelectTrigger>
                   <SelectValue placeholder="All groups (general)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All groups (general)</SelectItem>
+                  <SelectItem value="__none">All groups (general)</SelectItem>
                   {blogGroups.map(g => (
                     <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
                   ))}
@@ -4014,8 +4019,8 @@ const EditBlogDialog: React.FC<{
                   <SelectValue placeholder="All specializations" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All specializations</SelectItem>
-                  {(formData.target_group ? getSpecializationsForGroup(formData.target_group) : blogContentSpecs).map(s => (
+                  <SelectItem value="__none">All specializations</SelectItem>
+                  {(formData.target_group && formData.target_group !== '__none' ? getSpecializationsForGroup(formData.target_group) : blogContentSpecs).map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -4126,8 +4131,8 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
     title: '',
     content: '',
     thumbnail_url: '',
-    target_group: '',
-    target_specialization: '',
+    target_group: '__none',
+    target_specialization: '__none',
   });
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -4181,12 +4186,17 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
     e.preventDefault();
     setIsLoading(true);
     try {
-      await adminAPI.createBlog(formData);
+      const payload = {
+        ...formData,
+        target_group: formData.target_group === '__none' ? '' : formData.target_group,
+        target_specialization: formData.target_specialization === '__none' ? '' : formData.target_specialization,
+      };
+      await adminAPI.createBlog(payload);
       toast({
         title: "Blog created",
         description: "Blog post created successfully",
       });
-      setFormData({ title: '', content: '', thumbnail_url: '', target_group: '', target_specialization: '' });
+      setFormData({ title: '', content: '', thumbnail_url: '', target_group: '__none', target_specialization: '__none' });
       setIsOpen(false);
       onBlogCreated();
     } catch (error: any) {
@@ -4228,12 +4238,12 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Target Group</Label>
-                <Select value={formData.target_group} onValueChange={(v) => setFormData(prev => ({...prev, target_group: v, target_specialization: ''}))}>
+                <Select value={formData.target_group} onValueChange={(v) => setFormData(prev => ({...prev, target_group: v, target_specialization: '__none'}))}>
                   <SelectTrigger>
                     <SelectValue placeholder="All groups (general)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All groups (general)</SelectItem>
+                    <SelectItem value="__none">All groups (general)</SelectItem>
                     {blogGroups.map(g => (
                       <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
                     ))}
@@ -4247,8 +4257,8 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
                     <SelectValue placeholder="All specializations" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All specializations</SelectItem>
-                    {(formData.target_group ? getSpecializationsForGroup(formData.target_group) : blogContentSpecs).map(s => (
+                    <SelectItem value="__none">All specializations</SelectItem>
+                    {(formData.target_group && formData.target_group !== '__none' ? getSpecializationsForGroup(formData.target_group) : blogContentSpecs).map(s => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
                   </SelectContent>
