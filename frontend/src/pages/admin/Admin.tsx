@@ -107,15 +107,18 @@ const AdminDashboard: React.FC = () => {
   // Filter states for notes/papers/users
   const [notesYearFilter, setNotesYearFilter] = useState<string>('all');
   const [notesSemesterFilter, setNotesSemesterFilter] = useState<string>('all');
+  const [notesGroupFilter, setNotesGroupFilter] = useState<string>('all');
   const [notesSpecFilter, setNotesSpecFilter] = useState<string>('all');
   const [papersYearFilter, setPapersYearFilter] = useState<string>('all');
   const [papersSemesterFilter, setPapersSemesterFilter] = useState<string>('all');
+  const [papersGroupFilter, setPapersGroupFilter] = useState<string>('all');
   const [papersSpecFilter, setPapersSpecFilter] = useState<string>('all');
   const [usersYearFilter, setUsersYearFilter] = useState<string>('all');
   const [usersSemesterFilter, setUsersSemesterFilter] = useState<string>('all');
   const [usersStatusFilter, setUsersStatusFilter] = useState<string>('all');
+  const [usersGroupFilter, setUsersGroupFilter] = useState<string>('all');
   const [usersSpecFilter, setUsersSpecFilter] = useState<string>('all');
-  const { contentSpecializations, allSpecializations } = useGroups();
+  const { groups: dynamicGroups, contentSpecializations, allSpecializations, getSpecializationsForGroup } = useGroups();
   // Groups state
   const [groups, setGroups] = useState<any[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
@@ -1681,13 +1684,27 @@ const AdminDashboard: React.FC = () => {
                       <SelectItem value="2">Semester 2</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={notesGroupFilter} onValueChange={(v) => { setNotesGroupFilter(v); setNotesSpecFilter('all'); }}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue placeholder="Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Groups</SelectItem>
+                      {groups.map(g => (
+                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={notesSpecFilter} onValueChange={setNotesSpecFilter}>
                     <SelectTrigger className="w-[140px]">
                       <SelectValue placeholder="Specialization" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Specs</SelectItem>
-                      {contentSpecializations.map((spec) => (
+                      {(notesGroupFilter !== 'all'
+                        ? (groups.find(g => g.code === notesGroupFilter)?.specializations || [])
+                        : contentSpecializations
+                      ).map((spec) => (
                         <SelectItem key={spec} value={spec}>
                           {spec}
                         </SelectItem>
@@ -1763,6 +1780,7 @@ const AdminDashboard: React.FC = () => {
                 {allNotes
                   .filter(note => notesYearFilter === 'all' || note.year_of_study?.toString() === notesYearFilter)
                   .filter(note => notesSemesterFilter === 'all' || note.semester_of_study?.toString() === notesSemesterFilter)
+                  .filter(note => notesGroupFilter === 'all' || note.group === notesGroupFilter)
                   .filter(note => notesSpecFilter === 'all' || note.specialization === notesSpecFilter)
                   .map((note: any) => (
                   <div key={note.id} className={`border rounded-lg p-4 space-y-3 ${selectedNotes.has(note.id) ? 'ring-2 ring-primary bg-primary/5' : ''}`}>
@@ -1953,13 +1971,27 @@ const AdminDashboard: React.FC = () => {
                       <SelectItem value="2">Semester 2</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={papersGroupFilter} onValueChange={(v) => { setPapersGroupFilter(v); setPapersSpecFilter('all'); }}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue placeholder="Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Groups</SelectItem>
+                      {groups.map(g => (
+                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={papersSpecFilter} onValueChange={setPapersSpecFilter}>
                     <SelectTrigger className="w-[140px]">
                       <SelectValue placeholder="Specialization" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Specs</SelectItem>
-                      {contentSpecializations.map((spec) => (
+                      {(papersGroupFilter !== 'all'
+                        ? (groups.find(g => g.code === papersGroupFilter)?.specializations || [])
+                        : contentSpecializations
+                      ).map((spec) => (
                         <SelectItem key={spec} value={spec}>
                           {spec}
                         </SelectItem>
@@ -2035,6 +2067,7 @@ const AdminDashboard: React.FC = () => {
                 {allPapers
                   .filter(paper => papersYearFilter === 'all' || paper.year_of_study?.toString() === papersYearFilter)
                   .filter(paper => papersSemesterFilter === 'all' || paper.semester_of_study?.toString() === papersSemesterFilter)
+                  .filter(paper => papersGroupFilter === 'all' || paper.group === papersGroupFilter)
                   .filter(paper => papersSpecFilter === 'all' || paper.specialization === papersSpecFilter)
                   .map((paper: any) => (
                   <div key={paper.id} className={`border rounded-lg p-4 space-y-3 ${selectedPapers.has(paper.id) ? 'ring-2 ring-primary bg-primary/5' : ''}`}>
@@ -2240,13 +2273,27 @@ const AdminDashboard: React.FC = () => {
                       <SelectItem value="2">Semester 2</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={usersGroupFilter} onValueChange={(v) => { setUsersGroupFilter(v); setUsersSpecFilter('all'); }}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue placeholder="Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Groups</SelectItem>
+                      {groups.map(g => (
+                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={usersSpecFilter} onValueChange={setUsersSpecFilter}>
                     <SelectTrigger className="w-[140px]">
                       <SelectValue placeholder="Specialization" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Specs</SelectItem>
-                      {allSpecializations.map((spec) => (
+                      {(usersGroupFilter !== 'all'
+                        ? (groups.find(g => g.code === usersGroupFilter)?.specializations || [])
+                        : allSpecializations
+                      ).map((spec) => (
                         <SelectItem key={spec} value={spec}>
                           {spec}
                         </SelectItem>
@@ -2343,6 +2390,7 @@ const AdminDashboard: React.FC = () => {
                   })
                   .filter(user => usersYearFilter === 'all' || user.year_of_study?.toString() === usersYearFilter)
                   .filter(user => usersSemesterFilter === 'all' || user.semester_of_study?.toString() === usersSemesterFilter)
+                  .filter(user => usersGroupFilter === 'all' || user.group === usersGroupFilter)
                   .filter(user => usersSpecFilter === 'all' || user.specialization === usersSpecFilter)
                   .map((user: any) => (
                   <div key={user.id} className={`flex flex-col p-4 border rounded-lg bg-card space-y-3 ${selectedUsers.has(user.id) ? 'ring-2 ring-primary bg-primary/5' : ''}`}>

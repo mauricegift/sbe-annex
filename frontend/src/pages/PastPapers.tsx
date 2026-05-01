@@ -82,6 +82,7 @@ function buildPaperPayload(formData: any, fileUrl: string, thumbnailUrl: string)
     semester_of_study: formData.semester_of_study,
     file_url: fileUrl,
   };
+  if (formData.group) payload.group = formData.group;
   if (formData.specialization) payload.specialization = formData.specialization;
   if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
   if (formData.description) payload.description = formData.description;
@@ -100,12 +101,13 @@ const PastPapers: React.FC = () => {
 
 const PastPapersMain: React.FC = () => {
   const { user } = useAuth();
-  const { contentSpecializations } = useGroups();
+  const { groups, contentSpecializations, getSpecializationsForGroup } = useGroups();
   const [papers, setPapers] = useState<PastPaper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
+    group: 'all',
     semester: 'all',
     specialization: 'all',
     search: '',
@@ -171,6 +173,7 @@ const PastPapersMain: React.FC = () => {
         year: activeYear, // Always use the active year
       };
 
+      if (filters.group !== 'all') params.group = filters.group;
       if (filters.semester !== 'all') params.semester = parseInt(filters.semester);
       if (filters.specialization !== 'all') params.specialization = filters.specialization;
       if (filters.search.trim()) params.search = filters.search.trim();
@@ -423,21 +426,25 @@ const PastPapersMain: React.FC = () => {
               <CardTitle className="text-lg">Filters</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`grid grid-cols-1 md:grid-cols-${activeYear >= 3 ? '4' : '3'} gap-4`}>
+              {(() => {
+                const selectedGroup = groups.find(g => g.code === filters.group);
+                const groupSpecs = filters.group !== 'all' ? (selectedGroup?.specializations || []) : contentSpecializations;
+                return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>Search</Label>
                   <div className="flex space-x-2">
                     <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search papers..."
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search papers..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                      className="pl-10"
-                    />
+                        className="pl-10"
+                      />
                     </div>
-                    <Button 
+                    <Button
                       onClick={handleSearch}
                       disabled={!searchTerm.trim()}
                       className="px-4"
@@ -445,8 +452,8 @@ const PastPapersMain: React.FC = () => {
                       Search
                     </Button>
                     {filters.search && (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={handleClearSearch}
                         className="px-4"
                       >
@@ -455,34 +462,25 @@ const PastPapersMain: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
-                {/* Semester and Specialization on same line for Year 3+ */}
-                {activeYear >= 3 ? (
-                  <div className="grid grid-cols-2 gap-4">
+
                 <div className="space-y-2">
-                      <Label>Semester</Label>
-                      <Select value={filters.semester} onValueChange={(value) => setFilters(prev => ({ ...prev, semester: value }))}>
+                  <Label>Group</Label>
+                  <Select value={filters.group} onValueChange={(value) => {
+                    setFilters(prev => ({ ...prev, group: value, specialization: 'all' }));
+                    setCurrentPage(1);
+                  }}>
                     <SelectTrigger>
-                          <SelectValue placeholder="All semesters" />
+                      <SelectValue placeholder="All groups" />
                     </SelectTrigger>
                     <SelectContent>
-                          <SelectItem value="all">All semesters</SelectItem>
-                          <SelectItem value="1">Semester 1</SelectItem>
-                          <SelectItem value="2">Semester 2</SelectItem>
+                      <SelectItem value="all">All groups</SelectItem>
+                      {groups.map(g => (
+                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                    <SpecializationFilter
-                      specializations={contentSpecializations}
-                      value={filters.specialization}
-                      onChange={(value) => {
-                        setFilters(prev => ({ ...prev, specialization: value }));
-                        setCurrentPage(1);
-                      }}
-                    />
-                  </div>
-                ) : (
                 <div className="space-y-2">
                   <Label>Semester</Label>
                   <Select value={filters.semester} onValueChange={(value) => setFilters(prev => ({ ...prev, semester: value }))}>
@@ -496,13 +494,21 @@ const PastPapersMain: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                )}
+
+                <SpecializationFilter
+                  specializations={groupSpecs}
+                  value={filters.specialization}
+                  onChange={(value) => {
+                    setFilters(prev => ({ ...prev, specialization: value }));
+                    setCurrentPage(1);
+                  }}
+                />
 
                 <div className="flex items-end">
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setFilters({ semester: 'all', specialization: 'all', search: '' });
+                      setFilters({ group: 'all', semester: 'all', specialization: 'all', search: '' });
                       setSearchTerm('');
                       setCurrentPage(1);
                     }}
@@ -511,7 +517,8 @@ const PastPapersMain: React.FC = () => {
                   </Button>
                 </div>
               </div>
-            </CardContent>
+                );
+              })()}            </CardContent>
           </Card>
 
           {/* Papers Grid */}
@@ -575,6 +582,7 @@ const PastPapersUpload: React.FC = () => {
     course_code: '',
     year_of_study: 1,
     semester_of_study: 1,
+    group: '',
     specialization: '',
     description: '',
     file_url: '',
@@ -1062,13 +1070,41 @@ const PastPapersUpload: React.FC = () => {
               </div>
 
               {formData.year_of_study >= 3 && (
-                <ContentSpecializationSelect
-                  specializations={contentSpecializations}
-                  value={formData.specialization}
-                  onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
-                  label="Specialization *"
-                  placeholder="Select specialization"
-                />
+              {/* Group and Specialization */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="group">Study Group</Label>
+                  <Select
+                    value={formData.group}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, group: value, specialization: '' }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select group (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All / General</SelectItem>
+                      {groups.map(g => (
+                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(() => {
+                  const availableSpecs = formData.group
+                    ? getSpecializationsForGroup(formData.group)
+                    : contentSpecializations;
+                  return (formData.year_of_study >= 3 || formData.group) ? (
+                    <ContentSpecializationSelect
+                      specializations={availableSpecs}
+                      value={formData.specialization}
+                      onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
+                      label={formData.year_of_study >= 3 ? "Specialization *" : "Specialization"}
+                      placeholder="Select specialization"
+                    />
+                  ) : null;
+                })()}
+              </div>
               )}
 
               <div className="space-y-2">
