@@ -74,7 +74,7 @@ function sanitizePayload(obj: any) {
   return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
 }
 
-function buildPaperPayload(formData: any, fileUrl: string, thumbnailUrl: string) {
+function buildPaperPayload(formData: any, fileUrl: string, thumbnailUrl: string, finalSpecialization?: string) {
   const payload: any = {
     course_title: formData.course_title,
     course_code: formData.course_code,
@@ -83,7 +83,8 @@ function buildPaperPayload(formData: any, fileUrl: string, thumbnailUrl: string)
     file_url: fileUrl,
   };
   if (formData.group && formData.group !== '__none') payload.group = formData.group;
-  if (formData.specialization) payload.specialization = formData.specialization;
+  const spec = finalSpecialization ?? formData.specialization;
+  if (spec) payload.specialization = spec;
   if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
   if (formData.description) payload.description = formData.description;
   return payload;
@@ -610,6 +611,14 @@ const PastPapersUpload: React.FC = () => {
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [thumbnailDragActive, setThumbnailDragActive] = useState(false);
+  // File / thumbnail URL input modes
+  const [fileInputMode, setFileInputMode] = useState<'upload' | 'url'>('upload');
+  const [fileUrlInput, setFileUrlInput] = useState('');
+  const [fileUrlVerified, setFileUrlVerified] = useState(false);
+  const [fileUrlVerifying, setFileUrlVerifying] = useState(false);
+  const [thumbnailInputMode, setThumbnailInputMode] = useState<'upload' | 'url'>('upload');
+  const [thumbnailUrlInput, setThumbnailUrlInput] = useState('');
+  const [thumbnailUrlVerified, setThumbnailUrlVerified] = useState(false);
 
   // Mobile-friendly refs for file inputs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -877,6 +886,29 @@ const PastPapersUpload: React.FC = () => {
     }
   };
 
+  const verifyFileUrl = async () => {
+    const url = fileUrlInput.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      toast({ title: 'Invalid URL', description: 'URL must start with http:// or https://', variant: 'destructive' });
+      return;
+    }
+    setFileUrlVerifying(true);
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      if (res.ok) {
+        setFileUrlVerified(true);
+        setFormData(prev => ({ ...prev, file_url: url }));
+        toast({ title: 'URL verified', description: 'File URL is accessible and ready.' });
+      } else {
+        toast({ title: 'URL not accessible', description: `Server returned ${res.status}. Check the URL and try again.`, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Could not verify URL', description: 'Make sure the URL is public and correct.', variant: 'destructive' });
+    } finally {
+      setFileUrlVerifying(false);
+    }
+  };
+
   // Camera capture handler for mobile
   const handleCameraCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -904,24 +936,42 @@ const PastPapersUpload: React.FC = () => {
     e.preventDefault();
     console.log('Form submitted, starting upload process...');
     
-    if (!selectedFile) {
+    const usingUrlMode = fileInputMode === 'url';
+    if (!usingUrlMode && !selectedFile) {
       toast({
         title: "File required",
-        description: "Please select a file before submitting",
+        description: "Please select a file or provide a direct URL",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (usingUrlMode && !fileUrlVerified) {
+      toast({
+        title: "Verify URL first",
+        description: "Please click Verify to confirm the file URL is accessible",
         variant: "destructive",
       });
       return;
     }
 
+    // Auto-assign COMMON specialization for Year 1 & 2
+    const finalSpecialization = formData.year_of_study < 3 ? 'COMMON' : formData.specialization;
+
     setIsLoading(true);
     try {
-      // Upload files to Supabase first
-      console.log('Starting file upload to Supabase...', selectedFile.name);
-      const fileUrl = await uploadFileToStorage();
-      console.log('File uploaded successfully:', fileUrl);
-      
+      let fileUrl = '';
+      if (usingUrlMode) {
+        fileUrl = fileUrlInput.trim();
+      } else {
+        console.log('Starting file upload...', selectedFile!.name);
+        fileUrl = await uploadFileToStorage();
+        console.log('File uploaded successfully:', fileUrl);
+      }
+
       let thumbnailUrl = '';
-      if (selectedThumbnail) {
+      if (thumbnailInputMode === 'url' && thumbnailUrlInput.trim()) {
+        thumbnailUrl = thumbnailUrlInput.trim();
+      } else if (selectedThumbnail) {
           try {
             thumbnailUrl = await uploadThumbnailToStorage();
             console.log('Thumbnail uploaded successfully:', thumbnailUrl);
@@ -936,7 +986,7 @@ const PastPapersUpload: React.FC = () => {
 
       // Submit to backend
       console.log('Submitting to backend API...');
-      const payload = buildPaperPayload(formData, fileUrl, thumbnailUrl);
+      const payload = buildPaperPayload(formData, fileUrl, thumbnailUrl, finalSpecialization);
       console.log('Payload:', payload);
       
       const response = await pastPapersAPI.uploadPaper(payload);
@@ -1107,17 +1157,27 @@ const PastPapersUpload: React.FC = () => {
                   const groupSpecs = formData.group && formData.group !== '__none'
                     ? getSpecializationsForGroup(formData.group)
                     : contentSpecializations;
-                  const availableSpecs = groupSpecs.includes('COMMON')
-                    ? groupSpecs
-                    : [...groupSpecs, 'COMMON'];
+                  const baseSpecs = groupSpecs.filter(s => s !== 'COMMON');
+                  const availableSpecs = ['COMMON', ...baseSpecs];
                   return (
-                    <ContentSpecializationSelect
-                      specializations={availableSpecs}
-                      value={formData.specialization}
-                      onChange={(value) => setFormData(prev => ({ ...prev, specialization: value === '__none' ? '' : value }))}
-                      label="Specialization"
-                      placeholder="None (All specializations)"
-                    />
+                    <div className="space-y-2">
+                      <Label>Specialization *</Label>
+                      <Select
+                        value={formData.specialization}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select specialization" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSpecs.map(s => (
+                            <SelectItem key={s} value={s}>
+                              {s === 'COMMON' ? 'COMMON (for all specializations)' : s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   );
                 })()}
               </div>
@@ -1135,216 +1195,226 @@ const PastPapersUpload: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="file">Upload File *</Label>
-                <div 
-                  className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-                    dragActive 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted-foreground/25'
-                  }`}
-                  onDragEnter={(e) => handleDrag(e, setDragActive)}
-                  onDragLeave={(e) => handleDrag(e, setDragActive)}
-                  onDragOver={(e) => handleDrag(e, setDragActive)}
-                  onDrop={(e) => handleDrop(e, handleFileSelect, setDragActive)}
-                >
-                  {selectedFile ? (
-                    <div className="space-y-3">
-                      {/* File Preview */}
-                      <div className="flex items-center justify-center p-4 bg-muted rounded-md">
-                        {selectedFile.type.startsWith('image/') && filePreviewUrl ? (
-                          <img 
-                            src={filePreviewUrl} 
-                            alt="File preview"
-                            className="max-h-32 max-w-full object-contain rounded"
-                          />
-                        ) : (
-                          <File className="h-12 w-12 text-muted-foreground" />
-                        )}
-                      </div>
-                      <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                      {isUploading && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Uploading...
-                            </span>
-                            <span className="font-medium">{uploadProgress}%</span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div 
-                              className="bg-primary h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {!isUploading && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedFile(null);
-                            setFormData(prev => ({ ...prev, file_url: '', file_name: '' }));
-                          }}
-                        >
-                          Select Different File
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-2 py-2">
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                      <p className="text-sm font-medium">
-                        {isMobile ? 'Tap to select a file' : 'Drag and drop a file here, or click to browse'}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleFileInputClick}
-                        className="touch-manipulation"
-                      >
-                        Choose File
-                      </Button>
-                      <input
-                        ref={fileInputRef}
-                        id="file-upload"
-                        type="file"
-                        onChange={handleFileUpload}
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,image/*,application/pdf"
-                        className="hidden"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Supported formats: PDF, DOC, DOCX, Images (Max 20MB)
-                      </p>
-                    </div>
-                  )}
+                <Label>File *</Label>
+                {/* Sub-tab buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={fileInputMode === 'upload' ? 'default' : 'outline'}
+                    onClick={() => { setFileInputMode('upload'); setFileUrlInput(''); setFileUrlVerified(false); }}
+                  >
+                    Select File
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={fileInputMode === 'url' ? 'default' : 'outline'}
+                    onClick={() => { setFileInputMode('url'); setSelectedFile(null); setFilePreviewUrl(null); }}
+                  >
+                    Provide URL
+                  </Button>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="thumbnail">Upload Preview (Optional)</Label>
-                <div 
-                  className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-                    thumbnailDragActive 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted-foreground/25'
-                  }`}
-                  onDragEnter={(e) => handleDrag(e, setThumbnailDragActive)}
-                  onDragLeave={(e) => handleDrag(e, setThumbnailDragActive)}
-                  onDragOver={(e) => handleDrag(e, setThumbnailDragActive)}
-                  onDrop={(e) => handleDrop(e, handleThumbnailSelect, setThumbnailDragActive)}
-                >
-                  {selectedThumbnail ? (
-                    <div className="space-y-3">
-                      {/* Thumbnail Preview */}
-                      <div className="relative aspect-video w-full max-w-xs mx-auto rounded-md overflow-hidden bg-muted">
-                        {thumbnailPreviewUrl ? (
-                          <img 
-                            src={thumbnailPreviewUrl} 
-                            alt="Thumbnail preview"
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium truncate">{selectedThumbnail.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(selectedThumbnail.size / 1024 / 1024).toFixed(2)} MB
+                {fileInputMode === 'url' ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={fileUrlInput}
+                        onChange={(e) => { setFileUrlInput(e.target.value); setFileUrlVerified(false); }}
+                        placeholder="https://example.com/file.pdf"
+                        className="flex-1 border rounded-md px-3 py-2 text-sm bg-background"
+                      />
+                      <Button type="button" size="sm" onClick={verifyFileUrl} disabled={fileUrlVerifying || !fileUrlInput.trim()}>
+                        {fileUrlVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                      </Button>
+                    </div>
+                    {fileUrlVerified && (
+                      <p className="text-xs text-green-600 flex items-center gap-1">
+                        <span>✓</span> URL verified and ready
                       </p>
-                      {(isThumbnailUploading || isCompressing) && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              {isCompressing ? 'Compressing...' : 'Uploading...'}
-                            </span>
-                            {!isCompressing && <span className="font-medium">{thumbnailUploadProgress}%</span>}
-                          </div>
-                          {!isCompressing && (
-                            <div className="w-full bg-muted rounded-full h-2">
-                              <div 
-                                className="bg-primary h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${thumbnailUploadProgress}%` }}
-                              />
-                            </div>
+                    )}
+                  </div>
+                ) : (
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                      dragActive 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted-foreground/25'
+                    }`}
+                    onDragEnter={(e) => handleDrag(e, setDragActive)}
+                    onDragLeave={(e) => handleDrag(e, setDragActive)}
+                    onDragOver={(e) => handleDrag(e, setDragActive)}
+                    onDrop={(e) => handleDrop(e, handleFileSelect, setDragActive)}
+                  >
+                    {selectedFile ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center p-4 bg-muted rounded-md">
+                          {selectedFile.type.startsWith('image/') && filePreviewUrl ? (
+                            <img src={filePreviewUrl} alt="File preview" className="max-h-32 max-w-full object-contain rounded" />
+                          ) : (
+                            <File className="h-12 w-12 text-muted-foreground" />
                           )}
                         </div>
-                      )}
-                      {!isThumbnailUploading && !isCompressing && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedThumbnail(null);
-                            setFormData(prev => ({ ...prev, thumbnail_url: '' }));
-                          }}
-                        >
-                          Select Different Thumbnail
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-2 py-2">
-                      <Image className="h-8 w-8 mx-auto text-muted-foreground" />
-                      <p className="text-sm font-medium">
-                        {isMobile ? 'Tap to select or take a photo' : 'Drag and drop an image here, or click to browse'}
-                      </p>
-                      <div className="flex gap-2 justify-center flex-wrap">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleThumbnailInputClick}
-                          className="touch-manipulation"
-                        >
-                          <Image className="h-4 w-4 mr-2" />
-                          Gallery
-                        </Button>
-                        {isMobile && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleCameraClick}
-                            className="touch-manipulation"
-                          >
-                            <Camera className="h-4 w-4 mr-2" />
-                            Camera
+                        <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        {isUploading && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Uploading...</span>
+                              <span className="font-medium">{uploadProgress}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                          </div>
+                        )}
+                        {!isUploading && (
+                          <Button type="button" variant="outline" size="sm" onClick={() => { setSelectedFile(null); setFormData(prev => ({ ...prev, file_url: '', file_name: '' })); }}>
+                            Select Different File
                           </Button>
                         )}
                       </div>
-                      <input
-                        ref={thumbnailInputRef}
-                        id="thumbnail-upload"
-                        type="file"
-                        onChange={handleThumbnailUpload}
-                        accept="image/jpeg,image/png,image/webp,image/*"
-                        className="hidden"
-                      />
-                      {isMobile && (
-                        <input
-                          ref={cameraInputRef}
-                          id="camera-capture"
-                          type="file"
-                          onChange={handleCameraCapture}
-                          accept="image/*"
-                          capture="environment"
+                    ) : (
+                      <div className="space-y-2 py-2">
+                        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          {isMobile ? 'Tap to select a file' : 'Drag and drop a file here, or click to browse'}
+                        </p>
+                        <Button type="button" variant="outline" onClick={handleFileInputClick} className="touch-manipulation">
+                          Choose File
+                        </Button>
+                        <input ref={fileInputRef} id="file-upload" type="file" onChange={handleFileUpload}
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,image/*,application/pdf"
                           className="hidden"
                         />
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Supported formats: JPEG, PNG, WEBP (Max 5MB, auto-compressed)
-                      </p>
-                    </div>
-                  )}
+                        <p className="text-xs text-muted-foreground">Supported formats: PDF, DOC, DOCX, Images (Max 20MB)</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Preview Image (Optional)</Label>
+                {/* Sub-tab buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={thumbnailInputMode === 'upload' ? 'default' : 'outline'}
+                    onClick={() => { setThumbnailInputMode('upload'); setThumbnailUrlInput(''); setThumbnailUrlVerified(false); }}
+                  >
+                    Select File
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={thumbnailInputMode === 'url' ? 'default' : 'outline'}
+                    onClick={() => { setThumbnailInputMode('url'); setSelectedThumbnail(null); setThumbnailPreviewUrl(null); }}
+                  >
+                    Provide URL
+                  </Button>
                 </div>
+
+                {thumbnailInputMode === 'url' ? (
+                  <div className="space-y-2">
+                    <input
+                      type="url"
+                      value={thumbnailUrlInput}
+                      onChange={(e) => { setThumbnailUrlInput(e.target.value); setThumbnailUrlVerified(false); }}
+                      placeholder="https://example.com/thumbnail.jpg"
+                      className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                    />
+                    {thumbnailUrlInput.trim() && (
+                      <div className="relative aspect-video w-full max-w-xs mx-auto rounded-md overflow-hidden bg-muted">
+                        <img
+                          src={thumbnailUrlInput.trim()}
+                          alt="Thumbnail preview"
+                          className="object-cover w-full h-full"
+                          onLoad={() => setThumbnailUrlVerified(true)}
+                          onError={() => setThumbnailUrlVerified(false)}
+                        />
+                      </div>
+                    )}
+                    {thumbnailUrlVerified && (
+                      <p className="text-xs text-green-600 flex items-center gap-1"><span>✓</span> Image loaded successfully</p>
+                    )}
+                  </div>
+                ) : (
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                      thumbnailDragActive 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted-foreground/25'
+                    }`}
+                    onDragEnter={(e) => handleDrag(e, setThumbnailDragActive)}
+                    onDragLeave={(e) => handleDrag(e, setThumbnailDragActive)}
+                    onDragOver={(e) => handleDrag(e, setThumbnailDragActive)}
+                    onDrop={(e) => handleDrop(e, handleThumbnailSelect, setThumbnailDragActive)}
+                  >
+                    {selectedThumbnail ? (
+                      <div className="space-y-3">
+                        <div className="relative aspect-video w-full max-w-xs mx-auto rounded-md overflow-hidden bg-muted">
+                          {thumbnailPreviewUrl ? (
+                            <img src={thumbnailPreviewUrl} alt="Thumbnail preview" className="object-cover w-full h-full" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium truncate">{selectedThumbnail.name}</p>
+                        <p className="text-xs text-muted-foreground">{(selectedThumbnail.size / 1024 / 1024).toFixed(2)} MB</p>
+                        {(isThumbnailUploading || isCompressing) && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{isCompressing ? 'Compressing...' : 'Uploading...'}</span>
+                              {!isCompressing && <span className="font-medium">{thumbnailUploadProgress}%</span>}
+                            </div>
+                            {!isCompressing && (
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${thumbnailUploadProgress}%` }} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!isThumbnailUploading && !isCompressing && (
+                          <Button type="button" variant="outline" size="sm" onClick={() => { setSelectedThumbnail(null); setFormData(prev => ({ ...prev, thumbnail_url: '' })); }}>
+                            Select Different Thumbnail
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2 py-2">
+                        <Image className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          {isMobile ? 'Tap to select or take a photo' : 'Drag and drop an image here, or click to browse'}
+                        </p>
+                        <div className="flex gap-2 justify-center flex-wrap">
+                          <Button type="button" variant="outline" onClick={handleThumbnailInputClick} className="touch-manipulation">
+                            <Image className="h-4 w-4 mr-2" />Gallery
+                          </Button>
+                          {isMobile && (
+                            <Button type="button" variant="outline" onClick={handleCameraClick} className="touch-manipulation">
+                              <Camera className="h-4 w-4 mr-2" />Camera
+                            </Button>
+                          )}
+                        </div>
+                        <input ref={thumbnailInputRef} id="thumbnail-upload" type="file" onChange={handleThumbnailUpload}
+                          accept="image/jpeg,image/png,image/webp,image/*" className="hidden"
+                        />
+                        {isMobile && (
+                          <input ref={cameraInputRef} id="camera-capture" type="file" onChange={handleCameraCapture}
+                            accept="image/*" capture="environment" className="hidden"
+                          />
+                        )}
+                        <p className="text-xs text-muted-foreground">Supported formats: JPEG, PNG, WEBP (Max 5MB, auto-compressed)</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex space-x-4">
@@ -1358,7 +1428,7 @@ const PastPapersUpload: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading || !selectedFile}
+                  disabled={isLoading || (fileInputMode === 'upload' ? !selectedFile : !fileUrlVerified)}
                   className="flex-1"
                 >
                   {isLoading ? (
