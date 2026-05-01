@@ -44,6 +44,14 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "https://bbm.giftedtech.co.ke")
 
 # ── Register ─────────────────────────────────────────────────────────────────────
 
+
+@router.get("/check-first-user", response_model=Dict[str, Any])
+async def check_first_user():
+    """Check if this is the first user registration (for UI hints)."""
+    count = await db.users.count_documents({})
+    return {"is_first_user": count == 0}
+
+
 @router.post("/register", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate, request: Request):
     """
@@ -519,54 +527,3 @@ async def _delete_user_data(user: dict):
     await db.notes.delete_many({"uploaded_by": uid})
     await db.past_papers.delete_many({"uploaded_by": uid})
     await db.reviews.delete_many({"reviewed_by": uid})
-
-
-# ── Confirm email change via link ─────────────────────────────────────────────────
-
-@router.get("/confirm-email-change")
-async def confirm_email_change(token: str):
-    """
-    Called when the user clicks the email-change confirmation link sent to their new email.
-    Validates the token, ensures the new email is still available, then updates the user record.
-    Redirects to FRONTEND_URL/profile?email_changed=true on success.
-    """
-    from fastapi.responses import RedirectResponse
-
-    try:
-        payload = decode_email_token(token)
-    except jwt.ExpiredSignatureError:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=expired")
-    except jwt.PyJWTError:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
-
-    if payload.get("type") != "change_email":
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
-
-    old_email = payload.get("email")
-    new_email = payload.get("new_email")
-
-    if not old_email or not new_email:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=invalid")
-
-    user = await db.users.find_one({"email": old_email})
-    if not user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=not_found")
-
-    # Check the stored pending email matches what's in the token
-    if user.get("pending_email", "").lower() != new_email.lower():
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=mismatch")
-
-    # Ensure new email is still free
-    conflict = await db.users.find_one({"email": new_email, "_id": {"$ne": user["_id"]}})
-    if conflict:
-        return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_change=taken")
-
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {
-            "$set": {"email": new_email},
-            "$unset": {"pending_email": "", "email_change_sent_at": ""},
-        },
-    )
-
-    return RedirectResponse(url=f"{FRONTEND_URL}/profile?email_changed=true")
