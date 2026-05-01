@@ -433,6 +433,7 @@ const PastPapersMain: React.FC = () => {
           {(() => {
             const selectedGroup = groups.find(g => g.code === filters.group);
             const groupSpecs = filters.group !== 'all' ? (selectedGroup?.specializations || []) : contentSpecializations;
+            const filteredSpecs = (groupSpecs as string[]).filter(s => s !== 'COMMON');
             return (
               <div className="space-y-2.5">
                 <div className="flex gap-2">
@@ -446,16 +447,14 @@ const PastPapersMain: React.FC = () => {
                       className="pl-10 h-9"
                     />
                   </div>
-                  <Button onClick={handleSearch} disabled={!searchTerm.trim()} size="sm" className="px-4 h-9 shrink-0">
-                    Search
-                  </Button>
+                  <Button onClick={handleSearch} disabled={!searchTerm.trim()} size="sm" className="px-4 h-9 shrink-0">Search</Button>
                   {filters.search && (
                     <Button variant="ghost" size="sm" onClick={handleClearSearch} className="px-2 h-9 shrink-0">
                       <X className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {([['all', 'All Sem'], ['1', 'Sem 1'], ['2', 'Sem 2']] as [string, string][]).map(([val, label]) => (
                     <button
                       key={val}
@@ -464,31 +463,27 @@ const PastPapersMain: React.FC = () => {
                     >{label}</button>
                   ))}
                   <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
-                  <button
-                    onClick={() => { setFilters(prev => ({ ...prev, group: 'all', specialization: 'all' })); setCurrentPage(1); }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.group === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
-                  >All Groups</button>
-                  {groups.map(g => (
-                    <button
-                      key={g.code}
-                      onClick={() => { setFilters(prev => ({ ...prev, group: g.code, specialization: 'all' })); setCurrentPage(1); }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.group === g.code ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
-                    >{g.name}</button>
-                  ))}
-                  {groupSpecs.length > 0 && (
+                  <Select value={filters.group} onValueChange={(value) => { setFilters(prev => ({ ...prev, group: value, specialization: 'all' })); setCurrentPage(1); }}>
+                    <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[160px] shrink-0 rounded-full">
+                      <SelectValue placeholder="All Groups" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Groups</SelectItem>
+                      {groups.map(g => <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {filters.group !== 'all' && filteredSpecs.length > 0 && (
                     <>
                       <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
-                      <button
-                        onClick={() => { setFilters(prev => ({ ...prev, specialization: 'all' })); setCurrentPage(1); }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.specialization === 'all' ? 'bg-violet-600 text-white border-violet-600' : 'bg-background text-muted-foreground border-border hover:border-violet-500/60'}`}
-                      >All Specs</button>
-                      {(groupSpecs as string[]).filter(s => s !== 'COMMON').map(spec => (
-                        <button
-                          key={spec}
-                          onClick={() => { setFilters(prev => ({ ...prev, specialization: spec })); setCurrentPage(1); }}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.specialization === spec ? 'bg-violet-600 text-white border-violet-600' : 'bg-background text-muted-foreground border-border hover:border-violet-500/60'}`}
-                        >{spec}</button>
-                      ))}
+                      <Select value={filters.specialization} onValueChange={(value) => { setFilters(prev => ({ ...prev, specialization: value })); setCurrentPage(1); }}>
+                        <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[170px] shrink-0 rounded-full">
+                          <SelectValue placeholder="All Specs" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Specs</SelectItem>
+                          {filteredSpecs.map(spec => <SelectItem key={spec} value={spec}>{spec}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </>
                   )}
                   {(filters.group !== 'all' || filters.semester !== 'all' || filters.specialization !== 'all') && (

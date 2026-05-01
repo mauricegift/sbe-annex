@@ -205,9 +205,12 @@ const AdminDashboard: React.FC = () => {
     open: boolean;
     title: string;
     description: string;
-    action: () => void;
+    action: (remarks?: string) => void;
     variant?: 'default' | 'destructive';
+    showRemarks?: boolean;
+    remarksLabel?: string;
   }>({ open: false, title: '', description: '', action: () => {} });
+  const [confirmRemarks, setConfirmRemarks] = useState('');
   
   // Bulk selection states
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
@@ -425,20 +428,21 @@ const AdminDashboard: React.FC = () => {
   };
 
   const confirmNoteAction = (noteId: string, status: 'approved' | 'rejected', noteTitle: string) => {
-    if (status === 'rejected') {
-      setConfirmDialog({
-        open: true,
-        title: 'Reject Note',
-        description: `Are you sure you want to reject "${noteTitle}"? This action will notify the uploader.`,
-        action: () => {
-          handleNoteStatusUpdate(noteId, status, 'Quality standards not met');
-          setConfirmDialog(prev => ({ ...prev, open: false }));
-        },
-        variant: 'destructive'
-      });
-    } else {
-      handleNoteStatusUpdate(noteId, status);
-    }
+    setConfirmRemarks('');
+    setConfirmDialog({
+      open: true,
+      title: status === 'rejected' ? 'Reject Note' : 'Approve Note',
+      description: status === 'rejected'
+        ? `Reject "${noteTitle}"? The uploader will be notified.`
+        : `Approve "${noteTitle}"? The uploader will be notified.`,
+      action: (remarks?: string) => {
+        handleNoteStatusUpdate(noteId, status, remarks || undefined);
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      },
+      variant: status === 'rejected' ? 'destructive' : 'default',
+      showRemarks: true,
+      remarksLabel: 'Admin Remarks (optional)',
+    });
   };
 
   const handlePaperStatusUpdate = async (paperId: string, status: string, feedback?: string) => {
@@ -459,20 +463,21 @@ const AdminDashboard: React.FC = () => {
   };
 
   const confirmPaperAction = (paperId: string, status: 'approved' | 'rejected', paperTitle: string) => {
-    if (status === 'rejected') {
-      setConfirmDialog({
-        open: true,
-        title: 'Reject Past Paper',
-        description: `Are you sure you want to reject "${paperTitle}"? This action will notify the uploader.`,
-        action: () => {
-          handlePaperStatusUpdate(paperId, status, 'Quality standards not met');
-          setConfirmDialog(prev => ({ ...prev, open: false }));
-        },
-        variant: 'destructive'
-      });
-    } else {
-      handlePaperStatusUpdate(paperId, status);
-    }
+    setConfirmRemarks('');
+    setConfirmDialog({
+      open: true,
+      title: status === 'rejected' ? 'Reject Past Paper' : 'Approve Past Paper',
+      description: status === 'rejected'
+        ? `Reject "${paperTitle}"? The uploader will be notified.`
+        : `Approve "${paperTitle}"? The uploader will be notified.`,
+      action: (remarks?: string) => {
+        handlePaperStatusUpdate(paperId, status, remarks || undefined);
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      },
+      variant: status === 'rejected' ? 'destructive' : 'default',
+      showRemarks: true,
+      remarksLabel: 'Admin Remarks (optional)',
+    });
   };
 
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -3107,16 +3112,28 @@ const AdminDashboard: React.FC = () => {
         )}
 
         {/* Confirm Dialog */}
-        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => { setConfirmDialog(prev => ({ ...prev, open })); if (!open) setConfirmRemarks(''); }}>
           <AlertDialogContent className="w-[95vw] max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
               <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
             </AlertDialogHeader>
+            {confirmDialog.showRemarks && (
+              <div className="space-y-1.5 py-1">
+                <Label className="text-sm">{confirmDialog.remarksLabel || 'Remarks (optional)'}</Label>
+                <Textarea
+                  value={confirmRemarks}
+                  onChange={(e) => setConfirmRemarks(e.target.value)}
+                  placeholder="Add a note for the uploader..."
+                  rows={3}
+                  className="resize-none text-sm"
+                />
+              </div>
+            )}
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setConfirmRemarks('')}>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={confirmDialog.action}
+                onClick={() => confirmDialog.action(confirmRemarks || undefined)}
                 className={confirmDialog.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
               >
                 Confirm
@@ -3380,7 +3397,7 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Edit Note</DialogTitle>
             <DialogDescription className="text-sm">
@@ -3708,7 +3725,7 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Edit Past Paper</DialogTitle>
             <DialogDescription className="text-sm">
@@ -4006,7 +4023,7 @@ const EditBlogDialog: React.FC<{
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-base sm:text-lg">Edit Blog Post</DialogTitle>
           <DialogDescription className="text-sm">
@@ -4245,7 +4262,7 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Create Blog Post</DialogTitle>
             <DialogDescription>Write a new blog post or announcement</DialogDescription>
