@@ -82,7 +82,7 @@ function buildNotePayload(formData: any, fileUrl: string, thumbnailUrl: string) 
     file_url: fileUrl,
   };
   if (formData.group && formData.group !== '__none') payload.group = formData.group;
-  if (formData.specialization) payload.specialization = formData.specialization;
+  if (formData.specializations && formData.specializations.length) payload.specialization = formData.specializations;
   if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
   if (formData.description) payload.description = formData.description;
   return payload;
@@ -599,7 +599,7 @@ const NotesUpload: React.FC = () => {
     year_of_study: 1,
     semester_of_study: 1,
     group: '__none',
-    specialization: '',
+    specializations: [],
     description: '',
     file_url: '',
     thumbnail_url: '',
@@ -984,7 +984,7 @@ const NotesUpload: React.FC = () => {
     }
 
     // Auto-assign COMMON specialization for Year 1 & 2
-    const finalSpecialization = formData.year_of_study < 3 ? 'COMMON' : formData.specialization;
+    const finalSpecializations = formData.year_of_study < 3 ? ['COMMON'] : (formData.specializations?.length ? formData.specializations : ['COMMON']);
 
     setIsLoading(true);
     try {
@@ -1016,7 +1016,7 @@ const NotesUpload: React.FC = () => {
 
       // Submit to backend
       console.log('Submitting to backend API...');
-      const payload = buildNotePayload({ ...formData, specialization: finalSpecialization }, fileUrl, thumbnailUrl);
+      const payload = buildNotePayload({ ...formData, specialization: finalSpecializations }, fileUrl, thumbnailUrl);
       console.log('Payload:', payload);
       
       const response = await notesAPI.uploadNote(payload);
@@ -1186,20 +1186,24 @@ const NotesUpload: React.FC = () => {
                   const specsWithCommon = [...availableSpecs, 'COMMON'];
                   return (
                     <div className="space-y-2">
-                      <Label>Specialization *</Label>
-                      <Select
-                        value={formData.specialization}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select specialization" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {specsWithCommon.map(s => (
-                            <SelectItem key={s} value={s}>{s === 'COMMON' ? 'COMMON (for all specializations)' : s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label>Specialization * <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
+                      <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[48px]">
+                        {specsWithCommon.map(s => {
+                          const isSel = (formData.specializations || []).includes(s);
+                          return (
+                            <button key={s} type="button"
+                              onClick={() => setFormData(prev => {
+                                const cur = prev.specializations || [];
+                                return { ...prev, specializations: isSel ? cur.filter((x: string) => x !== s) : [...cur, s] };
+                              })}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isSel ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border hover:border-primary/50'}`}
+                            >{s === 'COMMON' ? 'COMMON (all)' : s}</button>
+                          );
+                        })}
+                      </div>
+                      {(!formData.specializations || formData.specializations.length === 0) && (
+                        <p className="text-xs text-destructive">Select at least one specialization</p>
+                      )}
                     </div>
                   );
                 })()}
@@ -1561,11 +1565,11 @@ const NoteView: React.FC = () => {
                   {note.file_url.split('.').pop()?.toUpperCase() || 'FILE'}
                 </span>
               )}
-              {note.specialization && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-600/90 text-white">
-                  {note.specialization}
+              {note.specialization && (Array.isArray(note.specialization) ? note.specialization : [note.specialization]).map((s: string) => (
+                <span key={s} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-600/90 text-white">
+                  {s}
                 </span>
-              )}
+              ))}
             </div>
             <h1 className={"text-xl sm:text-2xl font-bold leading-tight " + (note.thumbnail_url ? 'text-white drop-shadow-md' : 'text-foreground')}>
               {note.course_title}
