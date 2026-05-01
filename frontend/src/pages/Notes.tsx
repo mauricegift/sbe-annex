@@ -481,9 +481,9 @@ const NotesMain: React.FC = () => {
                     </Button>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex flex-wrap items-center gap-2 pb-1">
                   <Select value={filters.semester} onValueChange={(value) => { setFilters(prev => ({ ...prev, semester: value })); setCurrentPage(1); }}>
-                    <SelectTrigger className="h-8 text-xs min-w-[100px] max-w-[130px] shrink-0 rounded-full">
+                    <SelectTrigger className="h-8 text-xs min-w-[100px] max-w-[130px] shrink-0 rounded-full touch-manipulation">
                       <SelectValue placeholder="All Sems" />
                     </SelectTrigger>
                     <SelectContent>
@@ -494,7 +494,7 @@ const NotesMain: React.FC = () => {
                   </Select>
                   <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
                   <Select value={filters.group} onValueChange={(value) => { setFilters(prev => ({ ...prev, group: value, specialization: 'all' })); setCurrentPage(1); }}>
-                    <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[160px] shrink-0 rounded-full">
+                    <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[160px] shrink-0 rounded-full touch-manipulation">
                       <SelectValue placeholder="All Groups" />
                     </SelectTrigger>
                     <SelectContent>
@@ -506,7 +506,7 @@ const NotesMain: React.FC = () => {
                     <>
                       <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
                       <Select value={filters.specialization} onValueChange={(value) => { setFilters(prev => ({ ...prev, specialization: value })); setCurrentPage(1); }}>
-                        <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[170px] shrink-0 rounded-full">
+                        <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[170px] shrink-0 rounded-full touch-manipulation">
                           <SelectValue placeholder="All Specs" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1433,6 +1433,7 @@ const NotesUpload: React.FC = () => {
 };
 
 const NoteView: React.FC = () => {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [note, setNote] = useState<Note | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1523,6 +1524,12 @@ const NoteView: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
+      <div className="flex items-center">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/notes')} className="flex items-center gap-2 -ml-2 text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Notes
+        </Button>
+      </div>
       {/* Hero Info Card */}
       <Card className="overflow-hidden shadow-md border-border/60">
         <div className="relative">
@@ -1548,6 +1555,12 @@ const NoteView: React.FC = () => {
               <span className={"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium " + (note.thumbnail_url ? 'bg-white/15 backdrop-blur-sm text-white border border-white/20' : 'bg-muted text-muted-foreground')}>
                 Year {note.year_of_study} &bull; Sem {note.semester_of_study}
               </span>
+              {note.file_url && (
+                <span className={"inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold uppercase " + 
+                  (note.thumbnail_url ? 'bg-white/15 backdrop-blur-sm text-white border border-white/20' : 'bg-muted text-muted-foreground')}>
+                  {note.file_url.split('.').pop()?.toUpperCase() || 'FILE'}
+                </span>
+              )}
               {note.specialization && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-600/90 text-white">
                   {note.specialization}

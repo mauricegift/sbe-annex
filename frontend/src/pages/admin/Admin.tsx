@@ -1296,7 +1296,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar">
+        <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar" style={{ touchAction: 'pan-x' }}>
           <TabsList className="inline-flex w-max sm:w-full sm:grid sm:grid-cols-7 h-auto gap-2 bg-muted/50 p-1.5 rounded-xl border border-border/50">
             <TabsTrigger value="pending" className="text-sm px-4 py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
               <div className="flex items-center gap-2 font-medium">
@@ -3152,6 +3152,7 @@ const AdminDashboard: React.FC = () => {
     onSave: (userId: string, data: any) => void;
     isUpdating: boolean;
   }> = ({ user, onClose, onSave, isUpdating }) => {
+    const { allSpecializations } = useGroups();
     const [formData, setFormData] = useState({
       name: user.name || '',
       username: user.username || '',
@@ -3294,6 +3295,7 @@ const AdminDashboard: React.FC = () => {
     onClose: () => void;
     onSave: (noteId: string, data: any) => void;
   }> = ({ note, onClose, onSave }) => {
+    const { contentSpecializations } = useGroups();
     const [formData, setFormData] = useState({
       course_title: note.course_title || '',
       course_code: note.course_code || '',
@@ -3622,6 +3624,7 @@ const AdminDashboard: React.FC = () => {
     onClose: () => void;
     onSave: (paperId: string, data: any) => void;
   }> = ({ paper, onClose, onSave }) => {
+    const { contentSpecializations } = useGroups();
     const [formData, setFormData] = useState({
       course_title: paper.course_title || '',
       course_code: paper.course_code || '',

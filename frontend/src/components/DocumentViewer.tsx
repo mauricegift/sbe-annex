@@ -16,7 +16,8 @@ import {
   X,
   Share2,
   Copy,
-  Check
+  Check,
+  ExternalLink
 } from 'lucide-react';
 
 interface DocumentViewerProps {
@@ -182,12 +183,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     switch (fileType) {
       case 'pdf':
         return (
-          <div className="aspect-[4/3] w-full bg-muted rounded-lg overflow-hidden">
+          <div className="w-full bg-muted rounded-lg overflow-hidden" style={{ height: isMobile ? '75vh' : '82vh', minHeight: '480px' }}>
             <iframe
-              src={`${fileUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+              src={`${fileUrl}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
               className="w-full h-full"
               title={title}
               style={{ border: 'none' }}
+              allow="fullscreen"
             />
           </div>
         );
@@ -195,12 +197,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       case 'word':
         // Use Microsoft Office Online Viewer for Word documents
         return (
-          <div className="aspect-[4/3] w-full bg-muted rounded-lg overflow-hidden">
+          <div className="w-full bg-muted rounded-lg overflow-hidden" style={{ height: isMobile ? '75vh' : '82vh', minHeight: '480px' }}>
             <iframe
               src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
               className="w-full h-full"
               title={title}
               style={{ border: 'none' }}
+              allow="fullscreen"
             />
           </div>
         );
@@ -208,12 +211,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       case 'excel':
         // Use Microsoft Office Online Viewer for Excel files
         return (
-          <div className="aspect-[4/3] w-full bg-muted rounded-lg overflow-hidden">
+          <div className="w-full bg-muted rounded-lg overflow-hidden" style={{ height: isMobile ? '75vh' : '82vh', minHeight: '480px' }}>
             <iframe
               src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
               className="w-full h-full"
               title={title}
               style={{ border: 'none' }}
+              allow="fullscreen"
             />
           </div>
         );
@@ -221,28 +225,35 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       case 'powerpoint':
         // Use Microsoft Office Online Viewer for PowerPoint files
         return (
-          <div className="aspect-[4/3] w-full bg-muted rounded-lg overflow-hidden">
+          <div className="w-full bg-muted rounded-lg overflow-hidden" style={{ height: isMobile ? '75vh' : '82vh', minHeight: '480px' }}>
             <iframe
               src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
               className="w-full h-full"
               title={title}
               style={{ border: 'none' }}
+              allow="fullscreen"
             />
           </div>
         );
       
       default:
         return (
-          <div className="aspect-[4/3] w-full bg-muted rounded-lg flex items-center justify-center flex-col p-4 text-center">
+          <div className="w-full bg-muted rounded-lg flex items-center justify-center flex-col p-4 text-center" style={{ minHeight: '300px' }}>
             {getFileIcon(fileType)}
             <p className="mt-4 mb-4">Preview not available for this file type.</p>
             <p className="text-sm text-muted-foreground mb-4">
               File type: {getFileTypeName(fileType)}
             </p>
-            <Button onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-2" />
-              Download File
-            </Button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button onClick={handleDownload}>
+                <Download className="w-4 h-4 mr-2" />
+                Download File
+              </Button>
+              <Button variant="outline" onClick={() => window.open(fileUrl, '_blank')}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open in Browser
+              </Button>
+            </div>
           </div>
         );
     }
@@ -279,6 +290,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               
               
               {/* Download */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => window.open(fileUrl, '_blank')} className="h-8 px-2 sm:px-3">
+                    <ExternalLink className="w-4 h-4" />
+                    <span className="hidden sm:inline ml-2">Open</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Open in new tab</TooltipContent>
+              </Tooltip>
+              
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button 
