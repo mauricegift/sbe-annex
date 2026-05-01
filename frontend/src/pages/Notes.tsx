@@ -89,6 +89,7 @@ function buildNotePayload(formData: any, fileUrl: string, thumbnailUrl: string) 
 }
 
 const Notes: React.FC = () => {
+  useGroups();
   return (
     <Routes>
       <Route path="/" element={<NotesMain />} />
@@ -105,6 +106,7 @@ const NotesMain: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     group: 'all',
@@ -166,7 +168,11 @@ const NotesMain: React.FC = () => {
 
   const fetchNotes = async (page = 1) => {
     try {
-      setIsLoading(true);
+      if (!hasLoadedOnce.current) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       const params: any = {
         page,
         limit: 10,
@@ -191,7 +197,9 @@ const NotesMain: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch notes:', error);
     } finally {
+      hasLoadedOnce.current = true;
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -551,8 +559,14 @@ const NotesMain: React.FC = () => {
           </Card>
 
           {/* Notes Grid */}
+          {isRefreshing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Updating results...</span>
+            </div>
+          )}
           {notes.length > 0 ? (
-            <div className="space-y-6">
+            <div className={`space-y-6 transition-opacity duration-200 ${isRefreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
               <NotesGrid notes={notes} />
               
               {/* Pagination */}
@@ -601,7 +615,7 @@ const NotesMain: React.FC = () => {
 
 const NotesUpload: React.FC = () => {
   const navigate = useNavigate();
-  const { groups, getSpecializationsForGroup, contentSpecializations } = useGroups();
+  const { groups, getSpecializationsForGroup, contentSpecializations, loading: groupsLoading } = useGroups();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
@@ -1124,9 +1138,17 @@ const NotesUpload: React.FC = () => {
                   <Select
                     value={formData.group}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, group: value, specialization: '' }))}
+                    disabled={groupsLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select group (optional)" />
+                      {groupsLoading ? (
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Loading groups...
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Select group (optional)" />
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none">All / General</SelectItem>
