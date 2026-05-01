@@ -913,15 +913,6 @@ const PastPapersUpload: React.FC = () => {
       return;
     }
 
-    if (formData.year_of_study >= 3 && !formData.specialization) {
-      toast({
-        title: "Specialization required",
-        description: "Please select your specialization for Year 3 and above",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
       // Upload files to Supabase first
@@ -1113,18 +1104,21 @@ const PastPapersUpload: React.FC = () => {
                 </div>
 
                 {(() => {
-                  const availableSpecs = formData.group && formData.group !== '__none'
+                  const groupSpecs = formData.group && formData.group !== '__none'
                     ? getSpecializationsForGroup(formData.group)
                     : contentSpecializations;
-                  return (formData.year_of_study >= 3 || (formData.group && formData.group !== '__none')) ? (
+                  const availableSpecs = groupSpecs.includes('COMMON')
+                    ? groupSpecs
+                    : [...groupSpecs, 'COMMON'];
+                  return (
                     <ContentSpecializationSelect
                       specializations={availableSpecs}
                       value={formData.specialization}
-                      onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
-                      label={formData.year_of_study >= 3 ? "Specialization *" : "Specialization"}
-                      placeholder="Select specialization"
+                      onChange={(value) => setFormData(prev => ({ ...prev, specialization: value === '__none' ? '' : value }))}
+                      label="Specialization"
+                      placeholder="None (All specializations)"
                     />
-                  ) : null;
+                  );
                 })()}
               </div>
               )}

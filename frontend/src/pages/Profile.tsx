@@ -17,6 +17,7 @@ import Cropper from 'react-easy-crop';
 import { Dialog, DialogContent } from '../components/ui/dialog';
 import getCroppedImg from '../lib/cropImage';
 import { isIOSDevice, logMobileUploadDebug } from '../utils/mobileUploadFix';
+import { uploadProfilePicture } from '../lib/githubCdn';
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -314,16 +315,14 @@ const Profile: React.FC = () => {
         });
         return;
       }
-      setUploadProgress(50);
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(croppedBlob);
+      setUploadProgress(20);
+      const croppedFile = new File([croppedBlob], 'profile.jpg', { type: 'image/jpeg' });
+      const cdnUrl = await uploadProfilePicture(croppedFile, (progress) => {
+        setUploadProgress(20 + Math.round(progress * 0.6));
       });
-      setUploadProgress(80);
-      const response = await userAPI.updateProfilePicture(base64);
-      const updatedUser = { ...user, profile_picture: response.data?.profile_picture || base64 };
+      setUploadProgress(85);
+      const response = await userAPI.updateProfilePicture(cdnUrl);
+      const updatedUser = { ...user, profile_picture: response.data?.profile_picture || cdnUrl };
       setUploadProgress(100);
       updateUser(updatedUser);
       toast({

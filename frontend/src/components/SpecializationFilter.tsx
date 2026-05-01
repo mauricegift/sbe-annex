@@ -74,12 +74,12 @@ export const SpecializationSelect: React.FC<SpecializationFilterProps> = ({
   );
 };
 
-// For content (notes/papers) - includes COMMON
+// For content (notes/papers) - includes COMMON; always has a "None" option so specialization is optional
 export const ContentSpecializationSelect: React.FC<SpecializationFilterProps> = ({
   value,
   onChange,
   label = 'Specialization',
-  placeholder = 'Select specialization',
+  placeholder = 'None (All specializations)',
   specializations,
 }) => {
   const items = specializations && specializations.length > 0
@@ -89,11 +89,12 @@ export const ContentSpecializationSelect: React.FC<SpecializationFilterProps> = 
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange}>
+      <Select value={value || '__none'} onValueChange={(v) => onChange(v === '__none' ? '' : v)}>
         <SelectTrigger>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="__none">{placeholder}</SelectItem>
           {items.map((spec) => (
             <SelectItem key={spec.value} value={spec.value}>
               {spec.label}
