@@ -333,6 +333,74 @@ async def update_phone_before_verify(email: EmailStr, body: UpdatePhoneRequest):
 
 # ── Login ────────────────────────────────────────────────────────────────────────
 
+
+
+# ── Verify via Link — JSON version (called by frontend page) ─────────────────
+
+@router.post("/verify-email-link", response_model=Dict[str, Any])
+async def verify_email_link_post(body: Dict[str, Any]):
+    """
+    Frontend calls this after the user clicks the verification link in their email.
+    Accepts JSON {token}, verifies, and returns JSON success/error.
+    No redirect — the frontend handles navigation.
+    """
+    token = body.get("token", "")
+    try:
+        payload = decode_email_token(token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification link has expired.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification link.")
+
+    if payload.get("type") != "verify":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid link type.")
+
+    email = payload.get("email")
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    if user.get("is_verified"):
+        return {"success": True, "already_verified": True, "message": "Account already verified."}
+
+    await db.users.update_one(
+        {"email": email},
+        {"$set": {"is_verified": True}, "$unset": {"verification_code": "", "code_expires": ""}},
+    )
+    return {"success": True, "already_verified": False, "message": "Account verified successfully."}
+
+
+# ── Confirm account deletion — JSON version (called by frontend page) ─────────
+
+@router.post("/confirm-delete", response_model=Dict[str, Any])
+async def confirm_delete_via_link_post(body: Dict[str, Any]):
+    """
+    Frontend calls this after the user clicks the deletion confirmation link.
+    Accepts JSON {token}, deletes account, and returns JSON success/error.
+    No redirect — the frontend handles navigation.
+    """
+    token = body.get("token", "")
+    try:
+        payload = decode_email_token(token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Deletion link has expired.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid deletion link.")
+
+    if payload.get("type") != "delete":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid link type.")
+
+    email = payload.get("email")
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
+
+    if user.get("role") == "super_admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin accounts cannot be deleted through this endpoint.")
+
+    await _delete_user_data(user)
+    return {"success": True, "message": "Account deleted successfully."}
+
 @router.post("/login", response_model=Token)
 async def login(user_login: UserLogin):
     """Login with username/email and password."""
