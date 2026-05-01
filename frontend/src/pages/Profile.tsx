@@ -760,7 +760,7 @@ const Profile: React.FC = () => {
                 {/* Specialization */}
                 {(() => {
                   const selectedGroup = groups.find(g => g.code === (isEditing ? formData.group : (user as any)?.group));
-                  const specs = selectedGroup?.specializations || [];
+                  const specs = (selectedGroup?.specializations || []).filter(s => s !== 'COMMON');
                   const displaySpec = isEditing ? formData.specialization : (user?.specialization || '');
                   if (!isEditing && !displaySpec) return null;
                   return (
