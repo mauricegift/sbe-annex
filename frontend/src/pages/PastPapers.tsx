@@ -90,6 +90,7 @@ function buildPaperPayload(formData: any, fileUrl: string, thumbnailUrl: string)
 }
 
 const PastPapers: React.FC = () => {
+  useGroups();
   return (
     <Routes>
       <Route path="/" element={<PastPapersMain />} />
@@ -105,6 +106,7 @@ const PastPapersMain: React.FC = () => {
   const [papers, setPapers] = useState<PastPaper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     group: 'all',
@@ -166,7 +168,11 @@ const PastPapersMain: React.FC = () => {
 
   const fetchPapers = async (page = 1) => {
     try {
-      setIsLoading(true);
+      if (!hasLoadedOnce.current) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       const params: any = {
         page,
         limit: 10,
@@ -191,7 +197,9 @@ const PastPapersMain: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch papers:', error);
     } finally {
+      hasLoadedOnce.current = true;
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -522,8 +530,14 @@ const PastPapersMain: React.FC = () => {
           </Card>
 
           {/* Papers Grid */}
+          {isRefreshing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Updating results...</span>
+            </div>
+          )}
           {papers.length > 0 ? (
-            <div className="space-y-6">
+            <div className={`space-y-6 transition-opacity duration-200 ${isRefreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
             <PapersGrid papers={papers} />
               
               {/* Pagination */}
@@ -572,7 +586,7 @@ const PastPapersMain: React.FC = () => {
 
 const PastPapersUpload: React.FC = () => {
   const navigate = useNavigate();
-  const { groups, getSpecializationsForGroup, contentSpecializations } = useGroups();
+  const { groups, getSpecializationsForGroup, contentSpecializations, loading: groupsLoading } = useGroups();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isThumbnailUploading, setIsThumbnailUploading] = useState(false);
@@ -1077,9 +1091,17 @@ const PastPapersUpload: React.FC = () => {
                   <Select
                     value={formData.group}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, group: value, specialization: '' }))}
+                    disabled={groupsLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select group (optional)" />
+                      {groupsLoading ? (
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Loading groups...
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Select group (optional)" />
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none">All / General</SelectItem>
