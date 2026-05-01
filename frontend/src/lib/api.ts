@@ -72,6 +72,12 @@ export const authAPI = {
 
   confirmAccountDeletion: (data: { email_or_phone: string; code: string; verification_method: 'email' | 'sms' }) =>
     api.post('/auth/confirm-account-deletion', data),
+
+  verifyEmailLink: (token: string) =>
+    api.post('/auth/verify-email-link', { token }),
+
+  confirmDeleteLink: (token: string) =>
+    api.post('/auth/confirm-delete', { token }),
 };
 
 export const groupsAPI = {
@@ -127,6 +133,9 @@ export const userAPI = {
     api.post('/user/confirm-phone-change', { code }),
   updateNotificationPreferences: (notify_on_upload_decision: boolean) =>
     api.put('/user/notification-preferences', { notify_on_upload_decision }),
+
+  confirmEmailChange: (token: string) =>
+    api.post('/user/confirm-email-change', { token }),
 };
 
 export const dashboardAPI = {
