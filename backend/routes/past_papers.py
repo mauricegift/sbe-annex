@@ -63,7 +63,7 @@ async def get_past_papers(
     if group:
         q["group"] = group.upper()
     if specialization:
-        q["specialization"] = specialization
+        q["specialization"] = {"$in": [specialization, "COMMON"]}
     if search:
         q["$or"] = [
             {"course_title": {"$regex": search, "$options": "i"}},

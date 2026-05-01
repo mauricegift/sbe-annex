@@ -29,12 +29,6 @@ class DocumentUpload(BaseModel):
             raise ValueError("URL must start with http:// or https://")
         return v
 
-    @validator("specialization", pre=True, always=True)
-    def validate_specialization(cls, v, values):
-        if "year_of_study" in values and values["year_of_study"] >= 3 and not v:
-            raise ValueError("Specialization is required for year 3 and above")
-        return v
-
 
 class DocumentUpdate(BaseModel):
     course_title: Optional[str] = Field(None, min_length=2, max_length=100)

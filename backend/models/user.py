@@ -56,8 +56,8 @@ class UserProfile(BaseModel):
 
     @validator("profile_picture")
     def validate_profile_picture(cls, v):
-        if v and not v.startswith(("http://", "https://")):
-            raise ValueError("Profile picture must be a valid URL")
+        if v and not v.startswith(("http://", "https://", "data:image/")):
+            raise ValueError("Profile picture must be a valid URL or data URI")
         return v
 
 
@@ -131,19 +131,3 @@ class TokenData(BaseModel):
 class AdminUserUpdate(BaseModel):
     is_admin: Optional[bool] = None
     is_disabled: Optional[bool] = None
-
-
-class ChangeEmailRequest(BaseModel):
-    new_email: EmailStr
-
-
-class ChangePhoneRequest(BaseModel):
-    new_phone: str = Field(..., pattern=r"^(07|01)[0-9]{8}$")
-
-
-class ConfirmContactCodeRequest(BaseModel):
-    code: str
-
-
-class NotificationPreferencesUpdate(BaseModel):
-    notify_on_upload_decision: bool
