@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { dashboardAPI } from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { BookOpen, FileText, Upload, TrendingUp, Clock, Calendar, Sparkles, GraduationCap, RefreshCw, Shield, ArrowRight } from 'lucide-react';
+import { BookOpen, FileText, Upload, TrendingUp, Clock, Calendar, Sparkles, GraduationCap, RefreshCw, Shield, ArrowRight, AlertTriangle } from 'lucide-react';
 import { DashboardSkeleton } from '../components/PageSkeletons';
 import { Link } from 'react-router-dom';
 
@@ -77,6 +77,27 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8 max-w-5xl">
+
+      {/* Group/Specialization Completion Banner */}
+      {user && (!user.group || (user.year_of_study >= 3 && !user.specialization)) && (
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200">
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Complete your academic profile</p>
+            <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">
+              {!user.group
+                ? 'Please set your study group so you get relevant content.'
+                : 'Year 3+ students must also set their specialization for full access.'}
+            </p>
+          </div>
+          <Link
+            to="/profile"
+            className="shrink-0 text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+          >
+            Update Profile
+          </Link>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">

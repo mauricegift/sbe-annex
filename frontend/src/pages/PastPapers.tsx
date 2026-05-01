@@ -1008,7 +1008,8 @@ const PastPapersUpload: React.FC = () => {
       
       let detail = 'Failed to upload paper.';
       if (error?.response?.data?.detail) {
-        detail = error.response.data.detail;
+        const d = error.response.data.detail;
+        detail = Array.isArray(d) ? d.map((e: any) => e.msg || JSON.stringify(e)).join('; ') : String(d);
       } else if (typeof error?.response?.data === 'string') {
         detail = error.response.data;
       } else if (error?.message) {

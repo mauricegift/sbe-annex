@@ -161,6 +161,11 @@ const Profile: React.FC = () => {
   const handlePasswordChange = async () => {
     setIsLoading(true);
     try {
+      if (securityForm.newPassword === securityForm.currentPassword) {
+        toast({ title: 'Error', description: 'New password cannot be the same as your current password.', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
       if (securityForm.newPassword !== securityForm.confirmPassword) {
         throw new Error("New passwords don't match");
       }
@@ -270,21 +275,22 @@ const Profile: React.FC = () => {
       });
       return;
     }
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: "Invalid image type",
-        description: "Please select a valid image (JPEG, PNG, WEBP)",
-        variant: "destructive",
-      });
-      return;
+    // Accept any image format; compression handles size reduction
+    if (!file.type.startsWith('image/') && !['image/heic', 'image/heif'].includes(file.type.toLowerCase())) {
+      if (!file.name.match(/\.(jpg|jpeg|png|webp|gif|bmp|tiff|heic|heif|avif)$/i)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Allow up to 50MB before compression (compression will shrink it)
+    if (file.size > 50 * 1024 * 1024) {
       toast({
         title: "Image too large",
-        description: "Please select an image smaller than 5MB",
+        description: "Please select an image smaller than 50MB.",
         variant: "destructive",
       });
       return;
@@ -357,11 +363,14 @@ const Profile: React.FC = () => {
     
     setIsLoading(true);
     try {
-      await authAPI.requestAccountDeletion('email');
+      const res = await userAPI.requestDelete();
+      const method = res.data?.method || 'email';
       setDeleteStep('confirm');
       toast({
-        title: "Deletion code sent",
-        description: "Please check your email for the verification code.",
+        title: "Deletion request sent",
+        description: method === 'sms'
+          ? "A confirmation code has been sent via SMS. Enter it below."
+          : "A confirmation link has been sent to your email. Click it to permanently delete your account.",
       });
     } catch (error: any) {
       console.error('Deletion request error:', error);

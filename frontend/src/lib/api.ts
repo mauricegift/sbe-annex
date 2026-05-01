@@ -136,6 +136,9 @@ export const userAPI = {
 
   confirmEmailChange: (token: string) =>
     api.post('/user/confirm-email-change', { token }),
+
+  requestDelete: () =>
+    api.post('/user/request-delete'),
 };
 
 export const dashboardAPI = {
