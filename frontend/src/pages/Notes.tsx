@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { toast } from '../lib/toast';
 import { SpecializationFilter, ContentSpecializationSelect } from '../components/SpecializationFilter';
-import { BookOpen, Upload, Search, Eye, Download, Trash2, Loader2, File, Plus, Image, ArrowLeft, Users, ChevronDown, RefreshCw, Camera, Star } from 'lucide-react';
+import { BookOpen, Upload, Search, Eye, Download, Trash2, Loader2, File, Plus, Image, ArrowLeft, Users, ChevronDown, RefreshCw, Camera, Star, X } from 'lucide-react';
 import { NotesListSkeleton, DocumentViewSkeleton } from '../components/PageSkeletons';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import DocumentViewer from '../components/DocumentViewer';
@@ -457,108 +457,82 @@ const NotesMain: React.FC = () => {
 
         <TabsContent value={`year-${activeYear}`} className="space-y-6">
           {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const selectedGroup = groups.find(g => g.code === filters.group);
-                const groupSpecs = filters.group !== 'all' ? (selectedGroup?.specializations || []) : contentSpecializations;
-                return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Search</Label>
-                  <div className="flex space-x-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search notes..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Button 
-                      onClick={handleSearch}
-                      disabled={!searchTerm.trim()}
-                      className="px-4"
-                    >
-                      Search
-                    </Button>
-                    {filters.search && (
-                      <Button 
-                        variant="outline" 
-                        onClick={handleClearSearch}
-                        className="px-4"
-                      >
-                        Clear
-                      </Button>
-                    )}
+          {(() => {
+            const selectedGroup = groups.find(g => g.code === filters.group);
+            const groupSpecs = filters.group !== 'all' ? (selectedGroup?.specializations || []) : contentSpecializations;
+            return (
+              <div className="space-y-2.5">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search notes..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      className="pl-10 h-9"
+                    />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Group</Label>
-                  <Select value={filters.group} onValueChange={(value) => {
-                    setFilters(prev => ({ ...prev, group: value, specialization: 'all' }));
-                    setCurrentPage(1);
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All groups" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All groups</SelectItem>
-                      {groups.map(g => (
-                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Semester</Label>
-                  <Select value={filters.semester} onValueChange={(value) => setFilters(prev => ({ ...prev, semester: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All semesters" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All semesters</SelectItem>
-                      <SelectItem value="1">Semester 1</SelectItem>
-                      <SelectItem value="2">Semester 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <SpecializationFilter
-                  specializations={groupSpecs}
-                  value={filters.specialization}
-                  onChange={(value) => {
-                    setFilters(prev => ({ ...prev, specialization: value }));
-                    setCurrentPage(1);
-                  }}
-                />
-
-                <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFilters({ group: 'all', semester: 'all', specialization: 'all', search: '' });
-                      setSearchTerm('');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Clear Filters
+                  <Button onClick={handleSearch} disabled={!searchTerm.trim()} size="sm" className="px-4 h-9 shrink-0">
+                    Search
                   </Button>
+                  {filters.search && (
+                    <Button variant="ghost" size="sm" onClick={handleClearSearch} className="px-2 h-9 shrink-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {([['all', 'All Sem'], ['1', 'Sem 1'], ['2', 'Sem 2']] as [string, string][]).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => { setFilters(prev => ({ ...prev, semester: val })); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.semester === val ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
+                    >{label}</button>
+                  ))}
+                  <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
+                  <button
+                    onClick={() => { setFilters(prev => ({ ...prev, group: 'all', specialization: 'all' })); setCurrentPage(1); }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.group === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
+                  >All Groups</button>
+                  {groups.map(g => (
+                    <button
+                      key={g.code}
+                      onClick={() => { setFilters(prev => ({ ...prev, group: g.code, specialization: 'all' })); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.group === g.code ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
+                    >{g.name}</button>
+                  ))}
+                  {groupSpecs.length > 0 && (
+                    <>
+                      <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
+                      <button
+                        onClick={() => { setFilters(prev => ({ ...prev, specialization: 'all' })); setCurrentPage(1); }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.specialization === 'all' ? 'bg-violet-600 text-white border-violet-600' : 'bg-background text-muted-foreground border-border hover:border-violet-500/60'}`}
+                      >All Specs</button>
+                      {(groupSpecs as string[]).filter(s => s !== 'COMMON').map(spec => (
+                        <button
+                          key={spec}
+                          onClick={() => { setFilters(prev => ({ ...prev, specialization: spec })); setCurrentPage(1); }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.specialization === spec ? 'bg-violet-600 text-white border-violet-600' : 'bg-background text-muted-foreground border-border hover:border-violet-500/60'}`}
+                        >{spec}</button>
+                      ))}
+                    </>
+                  )}
+                  {(filters.group !== 'all' || filters.semester !== 'all' || filters.specialization !== 'all') && (
+                    <>
+                      <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
+                      <button
+                        onClick={() => { setFilters({ group: 'all', semester: 'all', specialization: 'all', search: '' }); setSearchTerm(''); setCurrentPage(1); }}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
+                      >Clear All</button>
+                    </>
+                  )}
                 </div>
               </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
+            );
+          })()}
 
-          {/* Notes Grid */}
+                    {/* Notes Grid */}
           {isRefreshing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1550,117 +1524,113 @@ const NoteView: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
-      <div className="flex justify-end">
-        <Button onClick={handleDownload} disabled={isDownloading} className="min-w-[140px]">
-          {isDownloading ? (
-            <>
-              <img 
-                src="/android-chrome-512x512.png" 
-                alt="" 
-                className="w-4 h-4 mr-2 rounded-full animate-spin"
+    <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
+      {/* Hero Info Card */}
+      <Card className="overflow-hidden shadow-md border-border/60">
+        <div className="relative">
+          {note.thumbnail_url ? (
+            <div className="relative h-52 sm:h-64 md:h-72 bg-muted overflow-hidden">
+              <img
+                src={note.thumbnail_url}
+                alt={"Preview for " + note.course_title}
+                className="w-full h-full object-cover"
               />
-              {downloadProgress > 0 ? `${downloadProgress}%` : 'Starting...'}
-            </>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+            </div>
           ) : (
-            <>
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </>
+            <div className="relative h-40 sm:h-48 bg-gradient-to-br from-primary/20 via-primary/10 to-background overflow-hidden">
+              <BookOpen className="absolute right-6 top-1/2 -translate-y-1/2 w-28 h-28 text-primary/10" />
+            </div>
           )}
-        </Button>
-      </div>
-
-      {/* Main Content - Preview on left, Info on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Preview Section - Left */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Preview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {note.thumbnail_url ? (
-              <div className="relative aspect-video w-full rounded-md overflow-hidden bg-muted">
-                <img 
-                  src={note.thumbnail_url} 
-                  alt={`Preview for ${note.course_title}`}
-                  className="object-contain w-full h-full"
-                />
-              </div>
-            ) : (
-              <div className="aspect-video w-full rounded-md bg-muted flex items-center justify-center">
-                <File className="h-12 w-12 text-muted-foreground" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Info Section - Right */}
-        <Card>
-          <CardHeader>
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">Code: {note.course_code}</Badge>
-                <Badge variant="outline">Year: {note.year_of_study}</Badge>
-                <Badge variant="outline">Semester: {note.semester_of_study}</Badge>
-                {note.specialization && (
-                  <Badge variant="default">{note.specialization}</Badge>
-                )}
-              </div>
-              <CardTitle className="text-xl sm:text-2xl">{note.course_title}</CardTitle>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={note.uploaded_by_profile_picture} alt={note.uploaded_by_name} />
-                    <AvatarFallback className="text-xs">{note.uploaded_by_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span>By: {note.uploaded_by_name}</span>
-                </div>
-                <span className="hidden sm:inline">•</span>
-                <span>{note.views} views</span>
-                <span className="hidden sm:inline">•</span>
-                <span>{new Date(note.created_at).toLocaleDateString()}</span>
-                {note.average_rating !== undefined && note.average_rating > 0 && (
-                  <>
-                    <span className="hidden sm:inline">•</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span>{note.average_rating.toFixed(1)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* Viewers Dropdown */}
-              {note.viewers && note.viewers.length > 0 && (
-                <Collapsible className="mt-3">
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    <Users className="w-4 h-4" />
-                    <span>{note.viewers.length} viewer{note.viewers.length > 1 ? 's' : ''}</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
-                    <div className="bg-muted/50 rounded-md p-3 space-y-1">
-                      {note.viewers.map((viewer, index) => (
-                        <div key={index} className="text-sm text-muted-foreground">
-                          @{viewer}
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+          <div className={note.thumbnail_url ? 'absolute bottom-0 left-0 right-0 p-5' : 'p-5 pb-2'}>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold bg-primary text-primary-foreground">
+                {note.course_code}
+              </span>
+              <span className={"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium " + (note.thumbnail_url ? 'bg-white/15 backdrop-blur-sm text-white border border-white/20' : 'bg-muted text-muted-foreground')}>
+                Year {note.year_of_study} &bull; Sem {note.semester_of_study}
+              </span>
+              {note.specialization && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-600/90 text-white">
+                  {note.specialization}
+                </span>
               )}
             </div>
-          </CardHeader>
-          {note.description && (
-            <CardContent>
-              <p className="text-muted-foreground text-sm sm:text-base">{note.description}</p>
-            </CardContent>
-          )}
-        </Card>
-      </div>
+            <h1 className={"text-xl sm:text-2xl font-bold leading-tight " + (note.thumbnail_url ? 'text-white drop-shadow-md' : 'text-foreground')}>
+              {note.course_title}
+            </h1>
+          </div>
+        </div>
 
-      {/* Document Viewer Section */}
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Avatar className="w-9 h-9">
+                <AvatarImage src={note.uploaded_by_profile_picture} alt={note.uploaded_by_name} />
+                <AvatarFallback className="text-sm">{note.uploaded_by_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-semibold leading-none">{note.uploaded_by_name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(note.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4" />
+                {note.views}
+              </span>
+              {note.average_rating !== undefined && note.average_rating > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  {note.average_rating.toFixed(1)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {note.description && (
+            <p className="text-sm text-muted-foreground border-t border-border/60 pt-4 leading-relaxed">{note.description}</p>
+          )}
+
+          {note.viewers && note.viewers.length > 0 && (
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Users className="w-4 h-4" />
+                {note.viewers.length} viewer{note.viewers.length !== 1 ? 's' : ''}
+                <ChevronDown className="w-3.5 h-3.5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {note.viewers.map((viewer, index) => (
+                    <span key={index} className="text-xs px-2.5 py-1 bg-muted rounded-full text-muted-foreground">
+                      @{viewer}
+                    </span>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          <div className="pt-1">
+            <Button onClick={handleDownload} disabled={isDownloading} size="lg" className="w-full sm:w-auto gap-2">
+              {isDownloading ? (
+                <>
+                  <img src="/android-chrome-512x512.png" alt="" className="w-4 h-4 rounded-full animate-spin" />
+                  {downloadProgress > 0 ? downloadProgress + '%' : 'Starting...'}
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <DocumentViewer
         fileUrl={note.file_url}
         title={note.course_title}
@@ -1668,7 +1638,6 @@ const NoteView: React.FC = () => {
         className="w-full"
       />
 
-      {/* Reviews Section - Last */}
       <ReviewSection
         reviews={note.reviews || []}
         averageRating={note.average_rating || 0}
@@ -1683,5 +1652,6 @@ const NoteView: React.FC = () => {
     </div>
   );
 };
+
 
 export default Notes;

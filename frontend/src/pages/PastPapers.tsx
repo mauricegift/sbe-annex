@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { toast } from '../lib/toast';
 import { SpecializationFilter, ContentSpecializationSelect } from '../components/SpecializationFilter';
-import { FileText, Upload, Search, Eye, Download, Trash2, Loader2, File, Plus, Image, ArrowLeft, Users, ChevronDown, RefreshCw, Camera, Star } from 'lucide-react';
+import { FileText, Upload, Search, Eye, Download, Trash2, Loader2, File, Plus, Image, ArrowLeft, Users, ChevronDown, RefreshCw, Camera, Star, X } from 'lucide-react';
 import { NotesListSkeleton, DocumentViewSkeleton } from '../components/PageSkeletons';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import DocumentViewer from '../components/DocumentViewer';
@@ -430,107 +430,82 @@ const PastPapersMain: React.FC = () => {
 
         <TabsContent value={`year-${activeYear}`} className="space-y-6">
           {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const selectedGroup = groups.find(g => g.code === filters.group);
-                const groupSpecs = filters.group !== 'all' ? (selectedGroup?.specializations || []) : contentSpecializations;
-                return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Search</Label>
-                  <div className="flex space-x-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search papers..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleSearch}
-                      disabled={!searchTerm.trim()}
-                      className="px-4"
-                    >
-                      Search
-                    </Button>
-                    {filters.search && (
-                      <Button
-                        variant="outline"
-                        onClick={handleClearSearch}
-                        className="px-4"
-                      >
-                        Clear
-                      </Button>
-                    )}
+          {(() => {
+            const selectedGroup = groups.find(g => g.code === filters.group);
+            const groupSpecs = filters.group !== 'all' ? (selectedGroup?.specializations || []) : contentSpecializations;
+            return (
+              <div className="space-y-2.5">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search papers..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      className="pl-10 h-9"
+                    />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Group</Label>
-                  <Select value={filters.group} onValueChange={(value) => {
-                    setFilters(prev => ({ ...prev, group: value, specialization: 'all' }));
-                    setCurrentPage(1);
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All groups" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All groups</SelectItem>
-                      {groups.map(g => (
-                        <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Semester</Label>
-                  <Select value={filters.semester} onValueChange={(value) => setFilters(prev => ({ ...prev, semester: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All semesters" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All semesters</SelectItem>
-                      <SelectItem value="1">Semester 1</SelectItem>
-                      <SelectItem value="2">Semester 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <SpecializationFilter
-                  specializations={groupSpecs}
-                  value={filters.specialization}
-                  onChange={(value) => {
-                    setFilters(prev => ({ ...prev, specialization: value }));
-                    setCurrentPage(1);
-                  }}
-                />
-
-                <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFilters({ group: 'all', semester: 'all', specialization: 'all', search: '' });
-                      setSearchTerm('');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Clear Filters
+                  <Button onClick={handleSearch} disabled={!searchTerm.trim()} size="sm" className="px-4 h-9 shrink-0">
+                    Search
                   </Button>
+                  {filters.search && (
+                    <Button variant="ghost" size="sm" onClick={handleClearSearch} className="px-2 h-9 shrink-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {([['all', 'All Sem'], ['1', 'Sem 1'], ['2', 'Sem 2']] as [string, string][]).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => { setFilters(prev => ({ ...prev, semester: val })); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.semester === val ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
+                    >{label}</button>
+                  ))}
+                  <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
+                  <button
+                    onClick={() => { setFilters(prev => ({ ...prev, group: 'all', specialization: 'all' })); setCurrentPage(1); }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.group === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
+                  >All Groups</button>
+                  {groups.map(g => (
+                    <button
+                      key={g.code}
+                      onClick={() => { setFilters(prev => ({ ...prev, group: g.code, specialization: 'all' })); setCurrentPage(1); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.group === g.code ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
+                    >{g.name}</button>
+                  ))}
+                  {groupSpecs.length > 0 && (
+                    <>
+                      <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
+                      <button
+                        onClick={() => { setFilters(prev => ({ ...prev, specialization: 'all' })); setCurrentPage(1); }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.specialization === 'all' ? 'bg-violet-600 text-white border-violet-600' : 'bg-background text-muted-foreground border-border hover:border-violet-500/60'}`}
+                      >All Specs</button>
+                      {(groupSpecs as string[]).filter(s => s !== 'COMMON').map(spec => (
+                        <button
+                          key={spec}
+                          onClick={() => { setFilters(prev => ({ ...prev, specialization: spec })); setCurrentPage(1); }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.specialization === spec ? 'bg-violet-600 text-white border-violet-600' : 'bg-background text-muted-foreground border-border hover:border-violet-500/60'}`}
+                        >{spec}</button>
+                      ))}
+                    </>
+                  )}
+                  {(filters.group !== 'all' || filters.semester !== 'all' || filters.specialization !== 'all') && (
+                    <>
+                      <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
+                      <button
+                        onClick={() => { setFilters({ group: 'all', semester: 'all', specialization: 'all', search: '' }); setSearchTerm(''); setCurrentPage(1); }}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
+                      >Clear All</button>
+                    </>
+                  )}
                 </div>
               </div>
-                );
-              })()}            </CardContent>
-          </Card>
+            );
+          })()}
 
-          {/* Papers Grid */}
+                    {/* Papers Grid */}
           {isRefreshing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1525,117 +1500,118 @@ const PaperView: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
-      <div className="flex justify-end">
-        <Button onClick={handleDownload} disabled={isDownloading} className="min-w-[140px]">
-          {isDownloading ? (
-            <>
-              <img 
-                src="/android-chrome-512x512.png" 
-                alt="" 
-                className="w-4 h-4 mr-2 rounded-full animate-spin"
+    <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
+      {/* Hero Info Card */}
+      <Card className="overflow-hidden shadow-md border-border/60">
+        <div className="relative">
+          {paper.thumbnail_url ? (
+            <div className="relative h-52 sm:h-64 md:h-72 bg-muted overflow-hidden">
+              <img
+                src={paper.thumbnail_url}
+                alt={"Preview for " + paper.course_title}
+                className="w-full h-full object-cover"
               />
-              {downloadProgress > 0 ? `${downloadProgress}%` : 'Starting...'}
-            </>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+            </div>
           ) : (
-            <>
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </>
+            <div className="relative h-40 sm:h-48 bg-gradient-to-br from-blue-500/15 via-blue-400/10 to-background overflow-hidden">
+              <FileText className="absolute right-6 top-1/2 -translate-y-1/2 w-28 h-28 text-blue-400/15" />
+            </div>
           )}
-        </Button>
-      </div>
-
-      {/* Main Content - Preview on left, Info on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Preview Section - Left */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Preview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {paper.thumbnail_url ? (
-              <div className="relative aspect-video w-full rounded-md overflow-hidden bg-muted">
-                <img 
-                  src={paper.thumbnail_url} 
-                  alt={`Preview for ${paper.course_title}`}
-                  className="object-contain w-full h-full"
-                />
-              </div>
-            ) : (
-              <div className="aspect-video w-full rounded-md bg-muted flex items-center justify-center">
-                <FileText className="h-12 w-12 text-muted-foreground" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Info Section - Right */}
-        <Card>
-          <CardHeader>
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{paper.course_code}</Badge>
-                <Badge variant="outline">Year {paper.year_of_study}</Badge>
-                <Badge variant="outline">Semester {paper.semester_of_study}</Badge>
-                {paper.specialization && (
-                  <Badge variant="default">{paper.specialization}</Badge>
-                )}
-              </div>
-              <CardTitle className="text-xl sm:text-2xl">{paper.course_title}</CardTitle>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={paper.uploaded_by_profile_picture} alt={paper.uploaded_by_name} />
-                    <AvatarFallback className="text-xs">{paper.uploaded_by_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span>By {paper.uploaded_by_name}</span>
-                </div>
-                <span className="hidden sm:inline">•</span>
-                <span>{paper.views} views</span>
-                <span className="hidden sm:inline">•</span>
-                <span>{new Date(paper.created_at).toLocaleDateString()}</span>
-                {paper.average_rating !== undefined && paper.average_rating > 0 && (
-                  <>
-                    <span className="hidden sm:inline">•</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span>{paper.average_rating.toFixed(1)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* Viewers Dropdown */}
-              {paper.viewers && paper.viewers.length > 0 && (
-                <Collapsible className="mt-3">
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    <Users className="w-4 h-4" />
-                    <span>{paper.viewers.length} viewer{paper.viewers.length > 1 ? 's' : ''}</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
-                    <div className="bg-muted/50 rounded-md p-3 space-y-1">
-                      {paper.viewers.map((viewer, index) => (
-                        <div key={index} className="text-sm text-muted-foreground">
-                          @{viewer}
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+          <div className={paper.thumbnail_url ? 'absolute bottom-0 left-0 right-0 p-5' : 'p-5 pb-2'}>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold bg-primary text-primary-foreground">
+                {paper.course_code}
+              </span>
+              <span className={"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium " + (paper.thumbnail_url ? 'bg-white/15 backdrop-blur-sm text-white border border-white/20' : 'bg-muted text-muted-foreground')}>
+                Year {paper.year_of_study} &bull; Sem {paper.semester_of_study}
+              </span>
+              {paper.exam_year && (
+                <span className={"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium " + (paper.thumbnail_url ? 'bg-white/15 backdrop-blur-sm text-white border border-white/20' : 'bg-muted text-muted-foreground')}>
+                  {paper.exam_year}
+                </span>
+              )}
+              {paper.specialization && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-600/90 text-white">
+                  {paper.specialization}
+                </span>
               )}
             </div>
-          </CardHeader>
-          {paper.description && (
-            <CardContent>
-              <p className="text-muted-foreground text-sm sm:text-base">{paper.description}</p>
-            </CardContent>
-          )}
-        </Card>
-      </div>
+            <h1 className={"text-xl sm:text-2xl font-bold leading-tight " + (paper.thumbnail_url ? 'text-white drop-shadow-md' : 'text-foreground')}>
+              {paper.course_title}
+            </h1>
+          </div>
+        </div>
 
-      {/* Document Viewer Section */}
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Avatar className="w-9 h-9">
+                <AvatarImage src={paper.uploaded_by_profile_picture} alt={paper.uploaded_by_name} />
+                <AvatarFallback className="text-sm">{paper.uploaded_by_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-semibold leading-none">{paper.uploaded_by_name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(paper.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4" />
+                {paper.views}
+              </span>
+              {paper.average_rating !== undefined && paper.average_rating > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  {paper.average_rating.toFixed(1)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {paper.description && (
+            <p className="text-sm text-muted-foreground border-t border-border/60 pt-4 leading-relaxed">{paper.description}</p>
+          )}
+
+          {paper.viewers && paper.viewers.length > 0 && (
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Users className="w-4 h-4" />
+                {paper.viewers.length} viewer{paper.viewers.length !== 1 ? 's' : ''}
+                <ChevronDown className="w-3.5 h-3.5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {paper.viewers.map((viewer, index) => (
+                    <span key={index} className="text-xs px-2.5 py-1 bg-muted rounded-full text-muted-foreground">
+                      @{viewer}
+                    </span>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          <div className="pt-1">
+            <Button onClick={handleDownload} disabled={isDownloading} size="lg" className="w-full sm:w-auto gap-2">
+              {isDownloading ? (
+                <>
+                  <img src="/android-chrome-512x512.png" alt="" className="w-4 h-4 rounded-full animate-spin" />
+                  {downloadProgress > 0 ? downloadProgress + '%' : 'Starting...'}
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <DocumentViewer
         fileUrl={paper.file_url}
         title={paper.course_title}
@@ -1643,7 +1619,6 @@ const PaperView: React.FC = () => {
         className="w-full"
       />
 
-      {/* Reviews Section - Last */}
       <ReviewSection
         reviews={paper.reviews || []}
         averageRating={paper.average_rating || 0}
@@ -1658,5 +1633,6 @@ const PaperView: React.FC = () => {
     </div>
   );
 };
+
 
 export default PastPapers;
