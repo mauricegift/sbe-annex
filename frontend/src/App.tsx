@@ -8,7 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/theme-provider";
 import Layout from "./components/Layout";
 import ScrollToTopOnNavigate from "./components/ScrollToTopOnNavigate";
-import { Loader2 } from 'lucide-react';
+import LoadingSpinner from './components/LoadingSpinner';
 
 const Home = lazy(() => import("./pages/Home"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -45,10 +45,7 @@ const queryClient = new QueryClient({
 
 const PageLoader = () => (
   <div className="min-h-[60vh] flex items-center justify-center">
-    <div className="flex flex-col items-center gap-3">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground animate-pulse">Loading...</p>
-    </div>
+    <LoadingSpinner fullScreen={false} text="" />
   </div>
 );
 

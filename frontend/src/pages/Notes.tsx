@@ -482,13 +482,16 @@ const NotesMain: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {([['all', 'All Sem'], ['1', 'Sem 1'], ['2', 'Sem 2']] as [string, string][]).map(([val, label]) => (
-                    <button
-                      key={val}
-                      onClick={() => { setFilters(prev => ({ ...prev, semester: val })); setCurrentPage(1); }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors shrink-0 ${filters.semester === val ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:border-primary/60'}`}
-                    >{label}</button>
-                  ))}
+                  <Select value={filters.semester} onValueChange={(value) => { setFilters(prev => ({ ...prev, semester: value })); setCurrentPage(1); }}>
+                    <SelectTrigger className="h-8 text-xs min-w-[100px] max-w-[130px] shrink-0 rounded-full">
+                      <SelectValue placeholder="All Sems" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sems</SelectItem>
+                      <SelectItem value="1">Semester 1</SelectItem>
+                      <SelectItem value="2">Semester 2</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="w-px bg-border shrink-0 self-stretch mx-0.5" />
                   <Select value={filters.group} onValueChange={(value) => { setFilters(prev => ({ ...prev, group: value, specialization: 'all' })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-8 text-xs min-w-[120px] max-w-[160px] shrink-0 rounded-full">
