@@ -490,7 +490,7 @@ const Profile: React.FC = () => {
                       {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'Student'}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">@{user?.username} · {user?.email}</p>
+                  <p className="text-sm text-muted-foreground truncate max-w-[180px] sm:max-w-none">@{user?.username} · {user?.email}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   {!isEditing ? (
@@ -1080,9 +1080,13 @@ const Profile: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
-        <DialogContent className="max-w-lg">
-          <div className="relative w-full h-64 bg-black">
+      <Dialog open={cropModalOpen} onOpenChange={(open) => { if (!isUploading) setCropModalOpen(open); }}>
+        <DialogContent className="w-[95vw] max-w-lg p-4 sm:p-6 overflow-hidden">
+          <div className="space-y-1 mb-3">
+            <h2 className="text-base font-semibold">Adjust Profile Picture</h2>
+            <p className="text-xs text-muted-foreground">Drag to reposition · Pinch or slide to zoom</p>
+          </div>
+          <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ height: 'min(55vw, 260px)' }}>
             <Cropper
               image={selectedImage}
               crop={crop}
@@ -1095,42 +1099,45 @@ const Profile: React.FC = () => {
               onCropComplete={(_, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
             />
           </div>
-          <div className="space-y-4 mt-4">
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={zoom}
-              onChange={e => setZoom(Number(e.target.value))}
-              className="w-full"
-            />
+          <div className="space-y-3 mt-3">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-8 shrink-0">Zoom</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={e => setZoom(Number(e.target.value))}
+                className="w-full h-1.5 accent-primary"
+              />
+            </div>
             {isUploading && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Uploading...</span>
+                  <span className="text-muted-foreground">Uploading...</span>
                   <span className="font-medium">{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                <div className="w-full bg-muted rounded-full h-1.5">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
               </div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setCropModalOpen(false)} disabled={isUploading}>Cancel</Button>
-              <Button onClick={handleCropAndUpload} disabled={isUploading}>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setCropModalOpen(false)} disabled={isUploading}>Cancel</Button>
+              <Button size="sm" onClick={handleCropAndUpload} disabled={isUploading}>
                 {isUploading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Saving...
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save
+                    <Save className="mr-1.5 h-3.5 w-3.5" />
+                    Save Photo
                   </>
                 )}
               </Button>
