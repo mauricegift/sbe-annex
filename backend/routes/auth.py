@@ -254,9 +254,8 @@ async def resend_verification(email: EmailStr, force_email: bool = False):
     if force_email and user.get("verification_method") == "sms":
         from lib.tokens import create_email_token
         import os as _os
-        base_url = _os.getenv("BASE_URL", "https://bbmback.giftedtech.co.ke")
         token_str = create_email_token(user["email"], "verify")
-        link = f"{base_url}/api/auth/verify-link?token={token_str}"
+        link = f"{FRONTEND_URL}/verify-email?token={token_str}"
         from utils.email_service import send_email_link
         ok = await send_email_link(user["email"], user["username"], link, "resend_verify")
         await db.users.update_one({"_id": user["_id"]}, {"$set": {"code_sent_at": datetime.utcnow()}})

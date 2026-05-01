@@ -86,6 +86,11 @@ async def change_password(
     if not verify_password(body.current_password, current_user["password"]):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect.")
 
+    if verify_password(body.new_password, current_user["password"]):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password cannot be the same as your current password.")
+
+
+
     await db.users.update_one(
         {"id": current_user["id"]},
         {"$set": {"password": hash_password(body.new_password)}},
@@ -93,20 +98,29 @@ async def change_password(
     return {"message": "Password changed successfully."}
 
 
+class ProfilePictureBody(BaseModel):
+    profile_picture: str
+
 @router.post("/update-profile-picture", response_model=Dict[str, str])
 async def update_profile_picture(
-    profile_picture_url: str = Form(...),
+    body: ProfilePictureBody,
     current_user: dict = Depends(get_current_user),
 ):
-    """Update profile picture URL."""
-    if not profile_picture_url.startswith(("http://", "https://")):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid URL format.")
-
+    """Update profile picture — accepts URL or base64 data URI."""
+    pic = body.profile_picture.strip()
+    if not pic:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Profile picture cannot be empty.")
+    if not (pic.startswith(("http://", "https://", "data:image/"))):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid profile picture format.")
+    if pic.startswith("data:image/"):
+        estimated_bytes = len(pic) * 3 // 4
+        if estimated_bytes > 5 * 1024 * 1024:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Profile picture too large. Max 5MB.")
     await db.users.update_one(
         {"id": current_user["id"]},
-        {"$set": {"profile_picture": profile_picture_url}},
+        {"$set": {"profile_picture": pic}},
     )
-    return {"message": "Profile picture updated successfully."}
+    return {"message": "Profile picture updated successfully.", "profile_picture": pic}
 
 
 # ── Email change ──────────────────────────────────────────────────────────────
