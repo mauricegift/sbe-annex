@@ -2,7 +2,7 @@
 Models for notes and past paper documents.
 """
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import List, Optional, Union
 from enum import Enum
 
 
@@ -18,7 +18,7 @@ class DocumentUpload(BaseModel):
     year_of_study: int = Field(..., ge=1, le=4)
     semester_of_study: int = Field(..., ge=1, le=2)
     group: Optional[str] = None
-    specialization: Optional[str] = None
+    specialization: Optional[Union[str, List[str]]] = None
     file_url: str = Field(..., min_length=10)
     thumbnail_url: Optional[str] = None
     description: Optional[str] = Field(None, max_length=500)
@@ -36,7 +36,7 @@ class DocumentUpdate(BaseModel):
     year_of_study: Optional[int] = Field(None, ge=1, le=4)
     semester_of_study: Optional[int] = Field(None, ge=1, le=2)
     group: Optional[str] = None
-    specialization: Optional[str] = None
+    specialization: Optional[Union[str, List[str]]] = None
     file_url: Optional[str] = Field(None, min_length=10)
     thumbnail_url: Optional[str] = None
     description: Optional[str] = Field(None, max_length=500)
