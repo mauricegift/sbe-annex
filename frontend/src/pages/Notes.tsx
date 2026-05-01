@@ -547,7 +547,6 @@ const NotesMain: React.FC = () => {
               </div>
                 );
               })()}
-              </div>
             </CardContent>
           </Card>
 

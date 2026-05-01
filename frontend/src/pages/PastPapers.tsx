@@ -1071,7 +1071,6 @@ const PastPapersUpload: React.FC = () => {
               </div>
 
               {formData.year_of_study >= 3 && (
-              {/* Group and Specialization */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="group">Study Group</Label>
