@@ -8,14 +8,21 @@ interface SpecializationFilterProps {
   onChange: (value: string) => void;
   label?: string;
   placeholder?: string;
+  specializations?: string[];
 }
 
+// For browse filtering (shows "All specializations" option + dynamic list)
 export const SpecializationFilter: React.FC<SpecializationFilterProps> = ({
   value,
   onChange,
   label = 'Specialization',
-  placeholder = 'All specializations'
+  placeholder = 'All specializations',
+  specializations,
 }) => {
+  const items = specializations && specializations.length > 0
+    ? specializations.map((s) => ({ value: s, label: s }))
+    : ALL_SPECIALIZATIONS;
+
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -25,7 +32,7 @@ export const SpecializationFilter: React.FC<SpecializationFilterProps> = ({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All specializations</SelectItem>
-          {ALL_SPECIALIZATIONS.map((spec) => (
+          {items.map((spec) => (
             <SelectItem key={spec.value} value={spec.value}>
               {spec.label}
             </SelectItem>
@@ -41,8 +48,13 @@ export const SpecializationSelect: React.FC<SpecializationFilterProps> = ({
   value,
   onChange,
   label = 'Specialization',
-  placeholder = 'Select specialization'
+  placeholder = 'Select specialization',
+  specializations,
 }) => {
+  const items = specializations && specializations.length > 0
+    ? specializations.map((s) => ({ value: s, label: s }))
+    : USER_SPECIALIZATIONS;
+
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -51,7 +63,7 @@ export const SpecializationSelect: React.FC<SpecializationFilterProps> = ({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {USER_SPECIALIZATIONS.map((spec) => (
+          {items.map((spec) => (
             <SelectItem key={spec.value} value={spec.value}>
               {spec.label}
             </SelectItem>
@@ -67,8 +79,13 @@ export const ContentSpecializationSelect: React.FC<SpecializationFilterProps> = 
   value,
   onChange,
   label = 'Specialization',
-  placeholder = 'Select specialization'
+  placeholder = 'Select specialization',
+  specializations,
 }) => {
+  const items = specializations && specializations.length > 0
+    ? specializations.map((s) => ({ value: s, label: s }))
+    : ALL_SPECIALIZATIONS;
+
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -77,7 +94,7 @@ export const ContentSpecializationSelect: React.FC<SpecializationFilterProps> = 
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {ALL_SPECIALIZATIONS.map((spec) => (
+          {items.map((spec) => (
             <SelectItem key={spec.value} value={spec.value}>
               {spec.label}
             </SelectItem>

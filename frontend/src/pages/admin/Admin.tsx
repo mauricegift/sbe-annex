@@ -15,7 +15,7 @@ import { Switch } from '../../components/ui/switch';
 import { toast } from '../../lib/toast';
 import RichTextEditor from '../../components/RichTextEditor';
 import { SpecializationSelect, ContentSpecializationSelect } from '../../components/SpecializationFilter';
-import { ALL_SPECIALIZATIONS, USER_SPECIALIZATIONS } from '../../lib/specializations';
+import { useGroups } from '../../hooks/useGroups';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
 import { Progress } from '../../components/ui/progress';
@@ -115,6 +115,7 @@ const AdminDashboard: React.FC = () => {
   const [usersSemesterFilter, setUsersSemesterFilter] = useState<string>('all');
   const [usersStatusFilter, setUsersStatusFilter] = useState<string>('all');
   const [usersSpecFilter, setUsersSpecFilter] = useState<string>('all');
+  const { contentSpecializations, allSpecializations } = useGroups();
   // Groups state
   const [groups, setGroups] = useState<any[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
@@ -1686,9 +1687,9 @@ const AdminDashboard: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Specs</SelectItem>
-                      {ALL_SPECIALIZATIONS.map((spec) => (
-                        <SelectItem key={spec.value} value={spec.value}>
-                          {spec.label}
+                      {contentSpecializations.map((spec) => (
+                        <SelectItem key={spec} value={spec}>
+                          {spec}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1958,9 +1959,9 @@ const AdminDashboard: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Specs</SelectItem>
-                      {ALL_SPECIALIZATIONS.map((spec) => (
-                        <SelectItem key={spec.value} value={spec.value}>
-                          {spec.label}
+                      {contentSpecializations.map((spec) => (
+                        <SelectItem key={spec} value={spec}>
+                          {spec}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -2245,9 +2246,9 @@ const AdminDashboard: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Specs</SelectItem>
-                      {USER_SPECIALIZATIONS.map((spec) => (
-                        <SelectItem key={spec.value} value={spec.value}>
-                          {spec.label}
+                      {allSpecializations.map((spec) => (
+                        <SelectItem key={spec} value={spec}>
+                          {spec}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -3118,6 +3119,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             {formData.year_of_study >= 3 && (
               <SpecializationSelect
+                specializations={allSpecializations}
                 value={formData.specialization}
                 onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
                 label="Specialization"
@@ -3343,6 +3345,7 @@ const AdminDashboard: React.FC = () => {
 
             {formData.year_of_study >= 3 && (
               <ContentSpecializationSelect
+                specializations={contentSpecializations}
                 value={formData.specialization}
                 onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
                 label="Specialization"
@@ -3670,6 +3673,7 @@ const AdminDashboard: React.FC = () => {
 
             {formData.year_of_study >= 3 && (
               <ContentSpecializationSelect
+                specializations={contentSpecializations}
                 value={formData.specialization}
                 onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
                 label="Specialization"

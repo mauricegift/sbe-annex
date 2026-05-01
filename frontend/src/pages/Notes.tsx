@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { notesAPI, reviewsAPI, setAuthErrorHandler } from '../lib/api';
+import { useGroups } from '../hooks/useGroups';
 import { uploadToGithubCdn } from '../lib/githubCdn';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -99,6 +100,7 @@ const Notes: React.FC = () => {
 const NotesMain: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const { contentSpecializations } = useGroups();
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -500,6 +502,7 @@ const NotesMain: React.FC = () => {
                     </div>
 
                     <SpecializationFilter
+                      specializations={contentSpecializations}
                       value={filters.specialization}
                       onChange={(value) => {
                         setFilters(prev => ({ ...prev, specialization: value }));
@@ -1107,6 +1110,7 @@ const NotesUpload: React.FC = () => {
               {/* Specialization field for Year 3+ */}
               {formData.year_of_study >= 3 && (
                 <ContentSpecializationSelect
+                  specializations={contentSpecializations}
                   value={formData.specialization}
                   onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
                   label="Specialization *"
