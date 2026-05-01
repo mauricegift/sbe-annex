@@ -30,8 +30,8 @@ const BlogMain: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [groupFilter, setGroupFilter] = useState('');
-  const [specFilter, setSpecFilter] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all');
+  const [specFilter, setSpecFilter] = useState('all');
   const [pagination, setPagination] = useState({ page: 1, total: 0, hasNext: false });
 
   useEffect(() => {
@@ -44,8 +44,8 @@ const BlogMain: React.FC = () => {
       if (searchQuery.trim()) {
         params.search = searchQuery.trim();
       }
-      if (groupFilter) params.group = groupFilter;
-      if (specFilter) params.specialization = specFilter;
+      if (groupFilter && groupFilter !== 'all') params.group = groupFilter;
+      if (specFilter && specFilter !== 'all') params.specialization = specFilter;
       
       const response = await blogAPI.getBlogs(params);
       if (response.data.data) {
@@ -104,12 +104,12 @@ const BlogMain: React.FC = () => {
 
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Group</Label>
-          <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setSpecFilter(''); setPagination(p => ({...p, page: 1})); }}>
+          <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setSpecFilter('all'); setPagination(p => ({...p, page: 1})); }}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="All groups" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All groups</SelectItem>
+              <SelectItem value="all">All groups</SelectItem>
               {groups.map(g => (
                 <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
               ))}
@@ -124,16 +124,16 @@ const BlogMain: React.FC = () => {
               <SelectValue placeholder="All specializations" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All specializations</SelectItem>
-              {(groupFilter ? getSpecializationsForGroup(groupFilter) : contentSpecializations).map(s => (
+              <SelectItem value="all">All specializations</SelectItem>
+              {(groupFilter && groupFilter !== 'all' ? getSpecializationsForGroup(groupFilter) : contentSpecializations).map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {(groupFilter || specFilter || searchQuery) && (
-          <Button variant="outline" size="sm" onClick={() => { setGroupFilter(''); setSpecFilter(''); setSearchQuery(''); }}>
+        {(groupFilter !== 'all' || specFilter !== 'all' || searchQuery) && (
+          <Button variant="outline" size="sm" onClick={() => { setGroupFilter('all'); setSpecFilter('all'); setSearchQuery(''); }}>
             Clear
           </Button>
         )}
