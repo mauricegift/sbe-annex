@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { blogAPI, reviewsAPI } from '../lib/api';
+import { useGroups } from '../hooks/useGroups';
 import { toast } from '../lib/toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Loader2, Calendar, Eye, User, BookOpen, Search, Share2, Copy, Check, RefreshCw } from 'lucide-react';
 import ReviewSection, { Review } from '../components/ReviewSection';
@@ -22,15 +25,18 @@ const Blog: React.FC = () => {
 };
 
 const BlogMain: React.FC = () => {
+  const { groups, getSpecializationsForGroup, contentSpecializations } = useGroups();
   const [blogs, setBlogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
+  const [specFilter, setSpecFilter] = useState('');
   const [pagination, setPagination] = useState({ page: 1, total: 0, hasNext: false });
 
   useEffect(() => {
     fetchBlogs();
-  }, [searchQuery]);
+  }, [searchQuery, groupFilter, specFilter]);
 
   const fetchBlogs = async (page = 1) => {
     try {
@@ -38,6 +44,8 @@ const BlogMain: React.FC = () => {
       if (searchQuery.trim()) {
         params.search = searchQuery.trim();
       }
+      if (groupFilter) params.group = groupFilter;
+      if (specFilter) params.specialization = specFilter;
       
       const response = await blogAPI.getBlogs(params);
       if (response.data.data) {
@@ -80,17 +88,55 @@ const BlogMain: React.FC = () => {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="max-w-md">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search blog posts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex-1 min-w-[200px] max-w-sm">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search announcements..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Group</Label>
+          <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v); setSpecFilter(''); setPagination(p => ({...p, page: 1})); }}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All groups" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All groups</SelectItem>
+              {groups.map(g => (
+                <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Specialization</Label>
+          <Select value={specFilter} onValueChange={(v) => { setSpecFilter(v); setPagination(p => ({...p, page: 1})); }}>
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="All specializations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All specializations</SelectItem>
+              {(groupFilter ? getSpecializationsForGroup(groupFilter) : contentSpecializations).map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {(groupFilter || specFilter || searchQuery) && (
+          <Button variant="outline" size="sm" onClick={() => { setGroupFilter(''); setSpecFilter(''); setSearchQuery(''); }}>
+            Clear
+          </Button>
+        )}
       </div>
 
       {blogs.length > 0 ? (

@@ -602,6 +602,7 @@ const NotesMain: React.FC = () => {
 
 const NotesUpload: React.FC = () => {
   const navigate = useNavigate();
+  const { groups, getSpecializationsForGroup, contentSpecializations } = useGroups();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);

@@ -179,9 +179,9 @@ export const adminAPI = {
     api.put(`/admin/past-papers/${id}`, data),
   updatePaper: (id: string, data: any) => api.put(`/admin/past-papers/${id}/edit`, data),
 
-  createBlog: (data: { title: string; content: string; thumbnail_url?: string; target_group?: string }) =>
+  createBlog: (data: { title: string; content: string; thumbnail_url?: string; target_group?: string; target_specialization?: string }) =>
     api.post('/admin/blogs', data),
-  updateBlog: (id: string, data: { title: string; content: string; thumbnail_url?: string; target_group?: string }) =>
+  updateBlog: (id: string, data: { title: string; content: string; thumbnail_url?: string; target_group?: string; target_specialization?: string }) =>
     api.put(`/admin/blogs/${id}`, data),
   deleteBlog: (id: string) => api.delete(`/admin/blogs/${id}`),
 
@@ -205,7 +205,7 @@ export const adminAPI = {
 };
 
 export const blogAPI = {
-  getBlogs: (params?: { page?: number; limit?: number; search?: string }) =>
+  getBlogs: (params?: { page?: number; limit?: number; search?: string; group?: string; specialization?: string }) =>
     api.get('/blogs', { params }),
   getBlog: (id: string) => api.get(`/blogs/${id}`),
 };

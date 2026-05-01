@@ -572,6 +572,7 @@ const PastPapersMain: React.FC = () => {
 
 const PastPapersUpload: React.FC = () => {
   const navigate = useNavigate();
+  const { groups, getSpecializationsForGroup, contentSpecializations } = useGroups();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isThumbnailUploading, setIsThumbnailUploading] = useState(false);

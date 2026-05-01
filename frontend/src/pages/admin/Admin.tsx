@@ -139,6 +139,8 @@ const AdminDashboard: React.FC = () => {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [blogsPagination, setBlogsPagination] = useState({ page: 1, total: 0, hasNext: false });
   const [blogsSearch, setBlogsSearch] = useState('');
+  const [blogsGroupFilter, setBlogsGroupFilter] = useState('');
+  const [blogsSpecFilter, setBlogsSpecFilter] = useState('');
   const [editingBlog, setEditingBlog] = useState<any>(null);
 
     // Testimonials state
@@ -336,10 +338,12 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const fetchBlogs = async (page = 1, search = '') => {
+  const fetchBlogs = async (page = 1, search = '', group = '', spec = '') => {
     try {
       const params: any = { page, limit: 10 };
       if (search) params.search = search;
+      if (group) params.group = group;
+      if (spec) params.specialization = spec;
       
       const response = await blogAPI.getBlogs(params);
       if (response.data.data) {
@@ -516,7 +520,7 @@ const AdminDashboard: React.FC = () => {
     setIsUpdatingBlog(true);
     try {
       await adminAPI.updateBlog(blogId, data);
-      await fetchBlogs(blogsPagination.page, blogsSearch);
+      await fetchBlogs(blogsPagination.page, blogsSearch, blogsGroupFilter, blogsSpecFilter);
       setEditingBlog(null);
       toast({
         title: "Blog updated",
@@ -539,7 +543,7 @@ const AdminDashboard: React.FC = () => {
     try {
       await adminAPI.deleteBlog(blogId);
       
-      await fetchBlogs(blogsPagination.page, blogsSearch);
+      await fetchBlogs(blogsPagination.page, blogsSearch, blogsGroupFilter, blogsSpecFilter);
       toast({
         title: "Blog deleted",
         description: "Blog post deleted successfully",
@@ -558,7 +562,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleBlogsSearch = () => {
-    fetchBlogs(1, blogsSearch);
+    fetchBlogs(1, blogsSearch, blogsGroupFilter, blogsSpecFilter);
   };
 
   const handleNotesSearch = () => {
@@ -631,7 +635,7 @@ const AdminDashboard: React.FC = () => {
     } else if (type === 'paper') {
       await fetchAllPapers(allPapersPagination.page, papersSearch);
     } else {
-      await fetchBlogs(blogsPagination.page, blogsSearch);
+      await fetchBlogs(blogsPagination.page, blogsSearch, blogsGroupFilter, blogsSpecFilter);
     }
   };
 
@@ -1188,7 +1192,7 @@ const AdminDashboard: React.FC = () => {
         try {
           const promises = Array.from(selectedBlogs).map(id => adminAPI.deleteBlog(id));
           await Promise.all(promises);
-          await fetchBlogs(blogsPagination.page, blogsSearch);
+          await fetchBlogs(blogsPagination.page, blogsSearch, blogsGroupFilter, blogsSpecFilter);
           setSelectedBlogs(new Set());
           toast({
             title: "Bulk action completed",
@@ -2503,7 +2507,7 @@ const AdminDashboard: React.FC = () => {
 
         <TabsContent value="blog">
           <div className="space-y-6">
-            <BlogManagementModal onBlogCreated={() => fetchBlogs(1, blogsSearch)} />
+            <BlogManagementModal onBlogCreated={() => fetchBlogs(1, blogsSearch, blogsGroupFilter, blogsSpecFilter)} />
             
             {/* Existing Blogs */}
             <Card>
@@ -2514,13 +2518,35 @@ const AdminDashboard: React.FC = () => {
                     <span>Blog Posts</span>
                     <Badge variant="outline">{blogsPagination.total}</Badge>
                   </CardTitle>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                  <div className="flex flex-wrap gap-2 items-center">
                     <Input
                       placeholder="Search blogs..."
                       value={blogsSearch}
                       onChange={(e) => setBlogsSearch(e.target.value)}
-                      className="w-full sm:w-48"
+                      className="w-40"
                     />
+                    <Select value={blogsGroupFilter} onValueChange={(v) => { setBlogsGroupFilter(v); setBlogsSpecFilter(''); fetchBlogs(1, blogsSearch, v, ''); }}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="All groups" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All groups</SelectItem>
+                        {groups.map(g => (
+                          <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={blogsSpecFilter} onValueChange={(v) => { setBlogsSpecFilter(v); fetchBlogs(1, blogsSearch, blogsGroupFilter, v); }}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="All specs" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All specializations</SelectItem>
+                        {(blogsGroupFilter ? (groups.find(g => g.code === blogsGroupFilter)?.specializations || []) : contentSpecializations).map(s => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button onClick={handleBlogsSearch} size="sm">
                       <Search className="w-4 h-4" />
                     </Button>
@@ -3881,10 +3907,13 @@ const EditBlogDialog: React.FC<{
   onSave: (blogId: string, data: any) => void;
   isUpdating: boolean;
 }> = ({ blog, onClose, onSave, isUpdating }) => {
+  const { groups: blogGroups, getSpecializationsForGroup, contentSpecializations: blogContentSpecs } = useGroups();
   const [formData, setFormData] = useState({
     title: blog.title || '',
     content: blog.content || '',
     thumbnail_url: blog.thumbnail_url || '',
+    target_group: blog.target_group || '',
+    target_specialization: blog.target_specialization || '',
   });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -3962,7 +3991,38 @@ const EditBlogDialog: React.FC<{
               placeholder="Blog post title..."
             />
           </div>
-          
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Target Group</Label>
+              <Select value={formData.target_group} onValueChange={(v) => setFormData(prev => ({...prev, target_group: v, target_specialization: ''}))} >
+                <SelectTrigger>
+                  <SelectValue placeholder="All groups (general)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All groups (general)</SelectItem>
+                  {blogGroups.map(g => (
+                    <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Target Specialization</Label>
+              <Select value={formData.target_specialization} onValueChange={(v) => setFormData(prev => ({...prev, target_specialization: v}))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All specializations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All specializations</SelectItem>
+                  {(formData.target_group ? getSpecializationsForGroup(formData.target_group) : blogContentSpecs).map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2 border rounded-lg p-3">
             <Label>Thumbnail</Label>
             {formData.thumbnail_url && (
@@ -4058,6 +4118,7 @@ const EditBlogDialog: React.FC<{
 };
 
 const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCreated }) => {
+  const { groups: blogGroups, getSpecializationsForGroup, contentSpecializations: blogContentSpecs } = useGroups();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -4065,6 +4126,8 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
     title: '',
     content: '',
     thumbnail_url: '',
+    target_group: '',
+    target_specialization: '',
   });
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -4123,7 +4186,7 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
         title: "Blog created",
         description: "Blog post created successfully",
       });
-      setFormData({ title: '', content: '', thumbnail_url: '' });
+      setFormData({ title: '', content: '', thumbnail_url: '', target_group: '', target_specialization: '' });
       setIsOpen(false);
       onBlogCreated();
     } catch (error: any) {
@@ -4160,6 +4223,37 @@ const BlogManagementModal: React.FC<{ onBlogCreated: () => void }> = ({ onBlogCr
                 placeholder="Enter blog title..."
                 required
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Target Group</Label>
+                <Select value={formData.target_group} onValueChange={(v) => setFormData(prev => ({...prev, target_group: v, target_specialization: ''}))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All groups (general)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All groups (general)</SelectItem>
+                    {blogGroups.map(g => (
+                      <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Target Specialization</Label>
+                <Select value={formData.target_specialization} onValueChange={(v) => setFormData(prev => ({...prev, target_specialization: v}))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All specializations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All specializations</SelectItem>
+                    {(formData.target_group ? getSpecializationsForGroup(formData.target_group) : blogContentSpecs).map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
