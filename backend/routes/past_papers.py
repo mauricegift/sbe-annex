@@ -27,7 +27,7 @@ async def upload_past_paper(paper: DocumentUpload, current_user: dict = Depends(
         "year_of_study": paper.year_of_study,
         "semester_of_study": paper.semester_of_study,
         "group": paper.group,
-        "specialization": paper.specialization,
+        "specialization": ([paper.specialization] if isinstance(paper.specialization, str) else paper.specialization) if paper.specialization else None,
         "file_url": paper.file_url,
         "thumbnail_url": paper.thumbnail_url,
         "description": paper.description,
@@ -63,7 +63,7 @@ async def get_past_papers(
     if group:
         q["group"] = group.upper()
     if specialization:
-        q["specialization"] = {"$in": [specialization, "COMMON"]}
+        q["$or"] = [{"specialization": {"$in": [specialization, "COMMON"]}}, {"specialization": specialization}, {"specialization": "COMMON"}]
     if search:
         q["$or"] = [
             {"course_title": {"$regex": search, "$options": "i"}},
