@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
@@ -7,8 +7,8 @@ import { toast } from '../lib/toast';
 import { secureDownload } from '../lib/secureDownload';
 import LogoSpinner from './LogoSpinner';
 import {
-  Download, Maximize, Minimize, FileText, File, FileSpreadsheet, X,
-  Share2, Copy, Check, ExternalLink, RefreshCw, AlertCircle
+  Download, Maximize, Minimize, FileText, File, FileSpreadsheet,
+  X, Share2, Copy, Check, ExternalLink, RefreshCw, AlertCircle
 } from 'lucide-react';
 
 interface DocumentViewerProps {
@@ -20,157 +20,251 @@ interface DocumentViewerProps {
   onClose?: () => void;
 }
 
+// Derive viewer height based on current screen
+const viewerHeight = () => {
+  if (typeof window === 'undefined') return '80vh';
+  return window.innerWidth < 640 ? 'calc(100dvh - 160px)' : 'calc(100dvh - 220px)';
+};
+
+// Resolve file extension ignoring query string
+const getExt = (url: string) =>
+  (url.split('?')[0].split('.').pop() || '').toLowerCase();
+
+const getFileType = (url: string) => {
+  const ext = getExt(url);
+  if (ext === 'pdf') return 'pdf';
+  if (['doc', 'docx'].includes(ext)) return 'word';
+  if (['xls', 'xlsx'].includes(ext)) return 'excel';
+  if (['ppt', 'pptx'].includes(ext)) return 'powerpoint';
+  return 'unknown';
+};
+
+const getFileTypeName = (ft: string) =>
+  ({ pdf: 'PDF Document', word: 'Word Document', excel: 'Excel Spreadsheet', powerpoint: 'PowerPoint Presentation', unknown: 'Document' }[ft] ?? 'Document');
+
+const getFileIcon = (ft: string) => {
+  if (ft === 'pdf') return <FileText className="h-10 w-10 text-red-500" />;
+  if (ft === 'word') return <FileText className="h-10 w-10 text-blue-500" />;
+  if (ft === 'excel') return <FileSpreadsheet className="h-10 w-10 text-green-500" />;
+  if (ft === 'powerpoint') return <FileText className="h-10 w-10 text-orange-500" />;
+  return <File className="h-10 w-10 text-muted-foreground" />;
+};
+
+// ─── Backend proxy URL so external viewers get a stable public URL ─────────
+const BACKEND = 'https://bbmback.giftedtech.co.ke';
+const proxyUrl = (original: string) =>
+  `${BACKEND}/api/proxy-file?url=${encodeURIComponent(original)}`;
+
+// ─── Viewer engine label map ──────────────────────────────────────────────
+const ENGINE_LABELS: Record<string, string> = {
+  office: 'Microsoft Office Online',
+  google: 'Google Docs Viewer',
+};
+
 const DocumentViewer: React.FC<DocumentViewerProps> = ({
-  fileUrl, title, fileName, className = "", isOpen = false, onClose
+  fileUrl, title, fileName, className = '', isOpen = false, onClose,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+
+  // Iframe-based viewer engine (for pptx / excel)
   const [viewerEngine, setViewerEngine] = useState<'office' | 'google'>('office');
   const [iframeLoading, setIframeLoading] = useState(true);
   const [showFallbackHint, setShowFallbackHint] = useState(false);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const iframeKey = useRef(0);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const iframeKeyRef = useRef(0);
 
-  const clearHintTimer = () => { if (hintTimer.current) clearTimeout(hintTimer.current); };
+  // Word/mammoth state
+  const [wordHtml, setWordHtml] = useState<string | null>(null);
+  const [wordLoading, setWordLoading] = useState(false);
+  const [wordError, setWordError] = useState<string | null>(null);
 
-  useEffect(() => () => clearHintTimer(), []);
+  const fileType = getFileType(fileUrl);
 
-  const resetIframeState = () => {
-    iframeKeyRef.current += 1;
-    setIframeLoading(true);
+  // ── Mammoth: render .doc / .docx locally in browser ────────────────────
+  useEffect(() => {
+    if (fileType !== 'word') return;
+    setWordLoading(true);
+    setWordHtml(null);
+    setWordError(null);
+
+    const load = async () => {
+      // Try direct fetch first; fall back to backend proxy for CORS
+      const urls = [fileUrl, proxyUrl(fileUrl)];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { mode: 'cors' });
+          if (!res.ok) continue;
+          const buf = await res.arrayBuffer();
+          const mammoth = (await import('mammoth')).default ?? (await import('mammoth'));
+          const result = await mammoth.convertToHtml({ arrayBuffer: buf });
+          setWordHtml(result.value || '<p style="color:#888">Document appears empty.</p>');
+          setWordLoading(false);
+          return;
+        } catch { /* try next */ }
+      }
+      setWordError('Could not render the document. Please use Download or Open in browser.');
+      setWordLoading(false);
+    };
+    load();
+  }, [fileUrl]);
+
+  // ── Iframe hint timer ───────────────────────────────────────────────────
+  const clearHint = () => { if (hintTimer.current) clearTimeout(hintTimer.current); };
+  const startHint = useCallback(() => {
+    clearHint();
     setShowFallbackHint(false);
-    clearHintTimer();
-    // Show fallback hint after 9s if the document hasn't loaded properly
-    hintTimer.current = setTimeout(() => setShowFallbackHint(true), 9000);
+    setIframeLoading(true);
+    hintTimer.current = setTimeout(() => setShowFallbackHint(true), 10000);
+  }, []);
+  useEffect(() => () => clearHint(), []);
+
+  const switchEngine = (engine: 'office' | 'google') => {
+    iframeKey.current += 1;
+    setViewerEngine(engine);
+    startHint();
+    toast({ title: `Switched to ${ENGINE_LABELS[engine]}` });
   };
 
-  const switchToGoogle = () => {
-    setViewerEngine('google');
-    resetIframeState();
-    toast({ title: 'Switched to Google Docs Viewer', description: 'Trying alternative viewer…' });
-  };
-
-  const switchToOffice = () => {
-    setViewerEngine('office');
-    resetIframeState();
-    toast({ title: 'Switched to Office Online', description: 'Trying Microsoft viewer…' });
-  };
-
+  // ── Share / Download ────────────────────────────────────────────────────
   const handleShare = async () => {
-    const shareData = { title, text: `Check out: ${title}`, url: window.location.href };
-    if (navigator.share && navigator.canShare(shareData)) {
-      try { await navigator.share(shareData); } catch {}
-    } else { handleCopyLink(); }
+    const data = { title, text: `Check out: ${title}`, url: window.location.href };
+    if (navigator.share && navigator.canShare?.(data)) {
+      try { await navigator.share(data); return; } catch { /* fallthrough */ }
+    }
+    handleCopyLink();
   };
 
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
-      toast({ title: 'Link copied', description: 'Link has been copied to clipboard' });
+      toast({ title: 'Link copied' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast({ title: 'Copy failed', description: 'Failed to copy link', variant: 'destructive' });
+      toast({ title: 'Copy failed', variant: 'destructive' });
     }
   };
 
-  const getFileExtension = (url: string) => url.split('.').pop()?.toLowerCase() || '';
-
-  const getFileType = (url: string) => {
-    const ext = getFileExtension(url);
-    switch (ext) {
-      case 'pdf': return 'pdf';
-      case 'doc': case 'docx': return 'word';
-      case 'xls': case 'xlsx': return 'excel';
-      case 'ppt': case 'pptx': return 'powerpoint';
-      default: return 'unknown';
-    }
-  };
-
-  const getFileIcon = (ft: string) => {
-    switch (ft) {
-      case 'pdf': return <FileText className="h-12 w-12 text-red-500" />;
-      case 'word': return <FileText className="h-12 w-12 text-blue-500" />;
-      case 'excel': return <FileSpreadsheet className="h-12 w-12 text-green-500" />;
-      case 'powerpoint': return <FileText className="h-12 w-12 text-orange-500" />;
-      default: return <File className="h-12 w-12 text-gray-500" />;
-    }
-  };
-
-  const getFileTypeName = (ft: string) => {
-    switch (ft) {
-      case 'pdf': return 'PDF Document';
-      case 'word': return 'Word Document';
-      case 'excel': return 'Excel Spreadsheet';
-      case 'powerpoint': return 'PowerPoint Presentation';
-      default: return 'Document';
-    }
-  };
-
-  const handleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      const el = document.querySelector('.document-viewer-container') as HTMLElement;
-      if (el) { el.requestFullscreen(); setIsFullscreen(true); }
-    } else { document.exitFullscreen(); setIsFullscreen(false); }
-  };
-
-  const getDownloadFileName = () => {
-    const extension = getFileExtension(fileUrl);
-    let name = fileName || title;
-    if (extension && name.toLowerCase().endsWith(`.${extension}`)) return name;
-    return extension ? `${name}.${extension}` : name;
+  const getDownloadName = () => {
+    const ext = getExt(fileUrl);
+    const base = (fileName || title).replace(/\.[^/.]+$/, '');
+    return ext ? `${base}.${ext}` : base;
   };
 
   const handleDownload = async () => {
     if (isDownloading) return;
     setIsDownloading(true);
     setDownloadProgress(0);
-    try {
-      await secureDownload(fileUrl, getDownloadFileName(), (p) => setDownloadProgress(p));
-    } finally { setIsDownloading(false); setDownloadProgress(0); }
+    try { await secureDownload(fileUrl, getDownloadName(), p => setDownloadProgress(p)); }
+    finally { setIsDownloading(false); setDownloadProgress(0); }
   };
 
-  const fileType = getFileType(fileUrl);
+  const handleFullscreen = () => {
+    const el = document.querySelector('.doc-viewer-root') as HTMLElement | null;
+    if (!document.fullscreenElement && el) {
+      el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
 
-  const renderOfficeViewer = () => {
-    const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
-    const googleUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-    const src = viewerEngine === 'office' ? officeUrl : googleUrl;
-    const engineLabel = viewerEngine === 'office' ? 'Microsoft Office Online' : 'Google Docs Viewer';
+  // ── Renderers ──────────────────────────────────────────────────────────
+  const renderPdf = () => (
+    <div className="w-full rounded-lg overflow-hidden bg-muted" style={{ height: viewerHeight(), minHeight: 360 }}>
+      <iframe
+        src={`${fileUrl}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
+        className="w-full h-full"
+        title={title}
+        style={{ border: 'none' }}
+        allow="fullscreen"
+      />
+    </div>
+  );
+
+  const renderWord = () => {
+    if (wordLoading) return (
+      <div className="flex flex-col items-center justify-center gap-3 py-16">
+        <LogoSpinner />
+        <p className="text-sm text-muted-foreground">Rendering document…</p>
+      </div>
+    );
+    if (wordHtml) return (
+      <div
+        className="w-full overflow-auto rounded-lg bg-white text-black p-4 sm:p-8"
+        style={{ height: viewerHeight(), minHeight: 320 }}
+      >
+        {/* Scoped typography styles */}
+        <style>{`
+          .doc-html-content h1,.doc-html-content h2,.doc-html-content h3{font-weight:bold;margin:.75em 0 .35em}
+          .doc-html-content h1{font-size:1.6em} .doc-html-content h2{font-size:1.3em} .doc-html-content h3{font-size:1.1em}
+          .doc-html-content p{margin:.4em 0;line-height:1.7}
+          .doc-html-content table{border-collapse:collapse;width:100%;margin:.5em 0}
+          .doc-html-content td,.doc-html-content th{border:1px solid #ccc;padding:4px 8px}
+          .doc-html-content ul,.doc-html-content ol{padding-left:1.5em;margin:.4em 0}
+          .doc-html-content strong{font-weight:600} .doc-html-content em{font-style:italic}
+        `}</style>
+        <div className="doc-html-content text-sm sm:text-base" dangerouslySetInnerHTML={{ __html: wordHtml }} />
+      </div>
+    );
+    // Error state
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-12 text-center px-4">
+        <AlertCircle className="h-10 w-10 text-amber-500" />
+        <p className="font-medium">Could not render this document</p>
+        <p className="text-sm text-muted-foreground max-w-sm">{wordError}</p>
+        <div className="flex flex-wrap gap-3 justify-center mt-2">
+          <Button onClick={handleDownload} disabled={isDownloading}>
+            <Download className="w-4 h-4 mr-2" />
+            {isDownloading ? `${downloadProgress || '…'}%` : 'Download File'}
+          </Button>
+          <Button variant="outline" onClick={() => window.open(fileUrl, '_blank')}>
+            <ExternalLink className="w-4 h-4 mr-2" />Open in Browser
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderOfficeIframe = () => {
+    const pUrl = proxyUrl(fileUrl);
+    const src = viewerEngine === 'office'
+      ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(pUrl)}`
+      : `https://docs.google.com/viewer?url=${encodeURIComponent(pUrl)}&embedded=true`;
 
     return (
       <div className="space-y-2">
+        {/* Engine switcher row */}
         <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
-          <span>Viewer: <span className="font-medium text-foreground">{engineLabel}</span></span>
+          <span>Viewer: <span className="font-medium text-foreground">{ENGINE_LABELS[viewerEngine]}</span></span>
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={viewerEngine === 'office' ? switchToGoogle : switchToOffice}
-              className="text-primary hover:underline flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Try {viewerEngine === 'office' ? 'Google Viewer' : 'Office Online'}
-            </button>
+            {viewerEngine !== 'office' && (
+              <button type="button" onClick={() => switchEngine('office')}
+                className="text-primary hover:underline flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" />Office Online
+              </button>
+            )}
+            {viewerEngine !== 'google' && (
+              <button type="button" onClick={() => switchEngine('google')}
+                className="text-primary hover:underline flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" />Google Viewer
+              </button>
+            )}
           </div>
         </div>
 
-        <div
-          className="relative w-full bg-muted rounded-lg overflow-hidden"
-          style={{ height: isMobile ? '75vh' : '82vh', minHeight: '480px' }}
-        >
+        <div className="relative w-full rounded-lg overflow-hidden bg-muted" style={{ height: viewerHeight(), minHeight: 360 }}>
           {iframeLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted z-10 gap-3">
               <LogoSpinner />
-              <p className="text-sm text-muted-foreground">Loading document…</p>
-              <p className="text-xs text-muted-foreground/70">This may take a moment</p>
+              <p className="text-sm text-muted-foreground">Loading presentation…</p>
             </div>
           )}
 
           <iframe
-            key={`${viewerEngine}-${iframeKeyRef.current}`}
+            key={`${viewerEngine}-${iframeKey.current}`}
             src={src}
             className="w-full h-full"
             title={title}
@@ -178,34 +272,26 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             allow="fullscreen"
             onLoad={() => {
               setIframeLoading(false);
-              clearHintTimer();
-              // After load, wait 2s then show hint in case Office showed an error page
-              hintTimer.current = setTimeout(() => setShowFallbackHint(true), 2500);
+              clearHint();
+              hintTimer.current = setTimeout(() => setShowFallbackHint(true), 3000);
             }}
           />
 
-          {/* Fallback hint bar at bottom */}
+          {/* Bottom hint bar */}
           {showFallbackHint && !iframeLoading && (
-            <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 z-20">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="absolute bottom-0 inset-x-0 bg-background/95 backdrop-blur border-t border-border px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-20">
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
                 <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
-                <span className="text-xs">Document not showing? Try another viewer or download.</span>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                {viewerEngine === 'office' ? (
-                  <Button variant="outline" size="sm" onClick={switchToGoogle} className="h-7 text-xs px-2">
-                    <RefreshCw className="w-3 h-3 mr-1" />Google Viewer
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={switchToOffice} className="h-7 text-xs px-2">
-                    <RefreshCw className="w-3 h-3 mr-1" />Office Online
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading} className="h-7 text-xs px-2">
-                  <Download className="w-3 h-3 mr-1" />
-                  {isDownloading ? `${downloadProgress}%` : 'Download'}
+                Not displaying correctly?
+              </span>
+              <div className="flex gap-2">
+                {viewerEngine === 'office'
+                  ? <Button size="sm" variant="outline" onClick={() => switchEngine('google')} className="h-7 text-xs px-2"><RefreshCw className="w-3 h-3 mr-1" />Google Viewer</Button>
+                  : <Button size="sm" variant="outline" onClick={() => switchEngine('office')} className="h-7 text-xs px-2"><RefreshCw className="w-3 h-3 mr-1" />Office Online</Button>}
+                <Button size="sm" variant="outline" onClick={handleDownload} disabled={isDownloading} className="h-7 text-xs px-2">
+                  <Download className="w-3 h-3 mr-1" />{isDownloading ? `${downloadProgress}%` : 'Download'}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowFallbackHint(false)} className="h-7 w-7 p-0">
+                <Button size="sm" variant="ghost" onClick={() => setShowFallbackHint(false)} className="h-7 w-7 p-0">
                   <X className="w-3 h-3" />
                 </Button>
               </div>
@@ -216,134 +302,123 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     );
   };
 
+  const renderUnknown = () => (
+    <div className="flex flex-col items-center justify-center py-12 gap-4 text-center px-4">
+      {getFileIcon('unknown')}
+      <p className="font-medium">Preview not available</p>
+      <p className="text-sm text-muted-foreground">This file type cannot be previewed in the browser.</p>
+      <div className="flex gap-3 flex-wrap justify-center">
+        <Button onClick={handleDownload} disabled={isDownloading}>
+          <Download className="w-4 h-4 mr-2" />{isDownloading ? `${downloadProgress}%` : 'Download'}
+        </Button>
+        <Button variant="outline" onClick={() => window.open(fileUrl, '_blank')}>
+          <ExternalLink className="w-4 h-4 mr-2" />Open
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderViewer = () => {
     switch (fileType) {
-      case 'pdf':
-        return (
-          <div className="w-full bg-muted rounded-lg overflow-hidden" style={{ height: isMobile ? '75vh' : '82vh', minHeight: '480px' }}>
-            <iframe
-              src={`${fileUrl}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
-              className="w-full h-full"
-              title={title}
-              style={{ border: 'none' }}
-              allow="fullscreen"
-            />
-          </div>
-        );
-
-      case 'word':
-      case 'excel':
+      case 'pdf': return renderPdf();
+      case 'word': return renderWord();
       case 'powerpoint':
-        return renderOfficeViewer();
-
-      default:
-        return (
-          <div className="w-full bg-muted rounded-lg flex items-center justify-center flex-col p-8 text-center" style={{ minHeight: '300px' }}>
-            {getFileIcon(fileType)}
-            <p className="mt-4 mb-2 font-medium">Preview not available for this file type.</p>
-            <p className="text-sm text-muted-foreground mb-6">File type: {getFileTypeName(fileType)}</p>
-            <div className="flex gap-3 flex-wrap justify-center">
-              <Button onClick={handleDownload} disabled={isDownloading}>
-                <Download className="w-4 h-4 mr-2" />
-                {isDownloading ? (downloadProgress > 0 ? `${downloadProgress}%` : 'Downloading…') : 'Download File'}
-              </Button>
-              <Button variant="outline" onClick={() => window.open(fileUrl, '_blank')}>
-                <ExternalLink className="w-4 h-4 mr-2" />Open in Browser
-              </Button>
-            </div>
-          </div>
-        );
+      case 'excel': return renderOfficeIframe();
+      default: return renderUnknown();
     }
   };
 
-  // Trigger iframe state reset when fileUrl changes
+  // Trigger Office iframe hint on mount for non-pdf/word
   useEffect(() => {
-    if (fileType !== 'pdf' && fileType !== 'unknown') resetIframeState();
+    if (fileType === 'powerpoint' || fileType === 'excel') startHint();
   }, [fileUrl]);
 
+  // ── Toolbar ────────────────────────────────────────────────────────────
+  const toolbar = (
+    <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={handleShare} className="h-8 px-2 sm:px-3">
+              <Share2 className="w-4 h-4" /><span className="hidden sm:inline ml-1.5">Share</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 px-2 sm:px-3">
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              <span className="hidden sm:inline ml-1.5">{copied ? 'Copied!' : 'Copy'}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{copied ? 'Copied!' : 'Copy Link'}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading} className="h-8 px-2 sm:px-3">
+              {isDownloading
+                ? <><LogoSpinner size="sm" /><span className="ml-1.5 text-xs hidden sm:inline">{downloadProgress > 0 ? `${downloadProgress}%` : '…'}</span></>
+                : <><Download className="w-4 h-4" /><span className="hidden sm:inline ml-1.5">Download</span></>}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={() => window.open(fileUrl, '_blank')} className="h-8 px-2 sm:px-3">
+              <ExternalLink className="w-4 h-4" /><span className="hidden sm:inline ml-1.5">Open</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Open in new tab</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={handleFullscreen} className="h-8 px-2">
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</TooltipContent>
+        </Tooltip>
+
+        {onClose && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={onClose} className="h-8 px-2">
+                <X className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
+        )}
+      </TooltipProvider>
+    </div>
+  );
+
   const viewerContent = (
-    <Card className={`${className} document-viewer-container`}>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <CardTitle className="text-base sm:text-lg">{getFileTypeName(fileType)} Viewer</CardTitle>
-          <div className="flex items-center flex-wrap gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={handleShare} className="h-8 px-2 sm:px-3">
-                    <Share2 className="w-4 h-4" />
-                    <span className="hidden sm:inline ml-2">Share</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 px-2 sm:px-3">
-                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                    <span className="hidden sm:inline ml-2">{copied ? 'Copied!' : 'Copy'}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{copied ? 'Copied!' : 'Copy Link'}</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading} className="h-8 px-2 sm:px-3">
-                    {isDownloading ? (
-                      <><LogoSpinner size="sm" /><span className="ml-2 text-xs">{downloadProgress > 0 ? `${downloadProgress}%` : 'Loading…'}</span></>
-                    ) : (
-                      <><Download className="w-4 h-4" /><span className="hidden sm:inline ml-2">Download</span></>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => window.open(fileUrl, '_blank')} className="h-8 px-2 sm:px-3">
-                    <ExternalLink className="w-4 h-4" />
-                    <span className="hidden sm:inline ml-2">Open</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Open in new tab</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={handleFullscreen} className="h-8 px-2">
-                    {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</TooltipContent>
-              </Tooltip>
-
-              {onClose && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" onClick={onClose} className="h-8 px-2">
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Close</TooltipContent>
-                </Tooltip>
-              )}
-            </TooltipProvider>
-          </div>
+    <Card className={`${className} doc-viewer-root`}>
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-base truncate max-w-[60vw] sm:max-w-xs">
+            {getFileTypeName(fileType)} Viewer
+          </CardTitle>
+          {toolbar}
         </div>
       </CardHeader>
-      <CardContent>{renderViewer()}</CardContent>
+      <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">{renderViewer()}</CardContent>
     </Card>
   );
 
   if (isOpen !== undefined && onClose) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+        <DialogContent className="w-[98vw] max-w-5xl max-h-[95dvh] overflow-y-auto p-2 sm:p-4">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
+            <DialogTitle className="text-sm sm:text-base truncate">{title}</DialogTitle>
           </DialogHeader>
           {viewerContent}
         </DialogContent>
