@@ -70,8 +70,8 @@ const Dashboard: React.FC = () => {
   ];
 
   const quickActions = [
-    { title: 'Upload Notes', description: 'Share study materials', icon: BookOpen, link: '/notes?upload=true', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-    { title: 'Upload Past Paper', description: 'Add exam papers', icon: FileText, link: '/past-papers?upload=true', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+    { title: 'Upload Notes', description: 'Share study materials', icon: BookOpen, link: '/notes/upload', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+    { title: 'Upload Past Paper', description: 'Add exam papers', icon: FileText, link: '/past-papers/upload', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
     { title: 'Latest Updates', description: 'News & announcements', icon: Clock, link: '/blog', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20' },
   ];
 
