@@ -41,6 +41,7 @@ app = FastAPI(
 )
 
 # ── Pretty-print JSON (2-space indent) ────────────────────────────────────────
+# Override default JSONResponse to use indent=2
 class PrettyJSONResponse(JSONResponse):
     def render(self, content) -> bytes:
         import json
@@ -50,26 +51,22 @@ class PrettyJSONResponse(JSONResponse):
             allow_nan=False,
             indent=2,
             separators=(", ", ": "),
-            default=str,
+            default=str,  # handle datetime, ObjectId, etc.
         ).encode("utf-8")
 
 app.default_response_class = PrettyJSONResponse
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-# Set CORS_ORIGINS in .env as comma-separated list of allowed origins.
-# Example: CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-# For local development add http://localhost:5173 or your Vite dev port.
-# The backend trusts whatever is listed here — keep it tight in production.
-raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
-allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+raw_origins = os.getenv("CORS_ORIGINS", "https://sbe.giftedtech.co.ke,https://bbm.giftedtech.co.ke")
+origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
-    expose_headers=["Content-Length", "Content-Disposition", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+    expose_headers=["Content-Length", "X-Request-ID"],
     max_age=600,
 )
 
@@ -97,6 +94,21 @@ async def startup_db_client():
     await db.reviews.create_index([("reviewed_by", 1)])
     await db.blogs.create_index([("author", 1)])
     await db.groups.create_index([("code", 1)], unique=True)
+    await db.testimonials.create_index([("status", 1)])
+    await db.testimonials.create_index([("created_at", -1)])
+
+    # ── Super admin bootstrap ─────────────────────────────────────────────────
+    super_admin_count = await db.users.count_documents({"role": "super_admin"})
+    if super_admin_count == 0:
+        target = await db.users.find_one({"email": "mauricegift045@gmail.com"})
+        if target:
+            await db.users.update_one(
+                {"email": "mauricegift045@gmail.com"},
+                {"$set": {"role": "super_admin", "is_admin": True, "is_verified": True}},
+            )
+            logger.info("Promoted mauricegift045@gmail.com to super_admin.")
+    elif super_admin_count > 1:
+        logger.warning("Multiple super_admin accounts detected — database may need cleanup.")
 
 
 @app.on_event("shutdown")
@@ -118,6 +130,7 @@ from routes.admin.notes import router as admin_notes_router
 from routes.admin.past_papers import router as admin_papers_router
 from routes.admin.blogs import router as admin_blogs_router
 from routes.admin.groups import router as admin_groups_router
+from routes.testimonials import router as testimonials_router
 
 API_PREFIX = "/api"
 
@@ -134,6 +147,7 @@ for router in [
     admin_papers_router,
     admin_blogs_router,
     admin_groups_router,
+    testimonials_router,
 ]:
     app.include_router(router, prefix=API_PREFIX)
 
@@ -141,10 +155,49 @@ for router in [
 # ── Root ──────────────────────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root():
-    return {"message": "Sbe Annex Learning Platform API v3.0", "status": "running"}
+    return {"message": "Sbe Annex Learning Platform API v3.0", "status": "running", "docs": "/docs"}
 
 
 # ── Dev entrypoint ────────────────────────────────────────────────────────────
+
+
+# ── File proxy — lets Office Online / Google viewer reach private URLs ─────────
+@app.get("/api/proxy-file")
+async def proxy_file(url: str):
+    """
+    Proxy a remote file through this server.
+    Useful when the original URL has auth tokens or CORS restrictions
+    that prevent external viewers (Office Online, Google Docs) from fetching it.
+    """
+    import urllib.request as _req
+    import urllib.error as _err
+    from fastapi.responses import Response as _Resp
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; SbeAnnexProxy/1.0)"}
+        request = _req.Request(url, headers=headers)
+        with _req.urlopen(request, timeout=20) as resp:
+            content = resp.read()
+            ct = resp.headers.get("Content-Type", "application/octet-stream")
+            cd = resp.headers.get(
+                "Content-Disposition",
+                f'inline; filename="document"'
+            )
+            return _Resp(
+                content=content,
+                media_type=ct,
+                headers={
+                    "Content-Disposition": cd,
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "public, max-age=300",
+                }
+            )
+    except _err.HTTPError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=e.code, detail=f"Upstream HTTP {e.code}")
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=502, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
 
