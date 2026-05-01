@@ -82,7 +82,7 @@ function buildPaperPayload(formData: any, fileUrl: string, thumbnailUrl: string)
     semester_of_study: formData.semester_of_study,
     file_url: fileUrl,
   };
-  if (formData.group) payload.group = formData.group;
+  if (formData.group && formData.group !== '__none') payload.group = formData.group;
   if (formData.specialization) payload.specialization = formData.specialization;
   if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
   if (formData.description) payload.description = formData.description;
@@ -583,7 +583,7 @@ const PastPapersUpload: React.FC = () => {
     course_code: '',
     year_of_study: 1,
     semester_of_study: 1,
-    group: '',
+    group: '__none',
     specialization: '',
     description: '',
     file_url: '',
@@ -1082,7 +1082,7 @@ const PastPapersUpload: React.FC = () => {
                       <SelectValue placeholder="Select group (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All / General</SelectItem>
+                      <SelectItem value="__none">All / General</SelectItem>
                       {groups.map(g => (
                         <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
                       ))}
@@ -1091,10 +1091,10 @@ const PastPapersUpload: React.FC = () => {
                 </div>
 
                 {(() => {
-                  const availableSpecs = formData.group
+                  const availableSpecs = formData.group && formData.group !== '__none'
                     ? getSpecializationsForGroup(formData.group)
                     : contentSpecializations;
-                  return (formData.year_of_study >= 3 || formData.group) ? (
+                  return (formData.year_of_study >= 3 || (formData.group && formData.group !== '__none')) ? (
                     <ContentSpecializationSelect
                       specializations={availableSpecs}
                       value={formData.specialization}
