@@ -27,7 +27,7 @@ async def upload_note(note: DocumentUpload, current_user: dict = Depends(get_cur
         "year_of_study": note.year_of_study,
         "semester_of_study": note.semester_of_study,
         "group": note.group,
-        "specialization": note.specialization,
+        "specialization": ([note.specialization] if isinstance(note.specialization, str) else note.specialization) if note.specialization else None,
         "file_url": note.file_url,
         "thumbnail_url": note.thumbnail_url,
         "description": note.description,
@@ -63,7 +63,7 @@ async def get_notes(
     if group:
         q["group"] = group.upper()
     if specialization:
-        q["specialization"] = {"$in": [specialization, "COMMON"]}
+        q["$or"] = [{"specialization": {"$in": [specialization, "COMMON"]}}, {"specialization": specialization}, {"specialization": "COMMON"}]
     if search:
         q["$or"] = [
             {"course_title": {"$regex": search, "$options": "i"}},
