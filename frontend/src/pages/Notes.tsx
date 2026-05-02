@@ -704,14 +704,7 @@ const NotesUpload: React.FC = () => {
         file_name: file.name 
       }));
     } else {
-      // Add extension to existing title
-      const extension = file.name.split('.').pop()?.toLowerCase() || '';
-      const titleWithoutExt = formData.course_title.replace(/\.[^/.]+$/, "");
-      setFormData(prev => ({ 
-        ...prev, 
-        course_title: `${titleWithoutExt}.${extension}`,
-        file_name: file.name 
-      }));
+      setFormData(prev => ({ ...prev, file_name: file.name }));
     }
     setFatalError(null);
     return true;
