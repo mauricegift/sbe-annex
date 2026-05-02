@@ -219,7 +219,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   // Used for .doc, .pptx, .xlsx (and .docx fallback if mammoth fails)
   const renderOfficeIframe = () => {
-    const pUrl = proxyUrl(fileUrl);
+    // Use the direct public URL for external viewers — jsDelivr and similar CDNs
+    // are publicly accessible so Office Online/Google Docs can fetch them directly.
+    // The proxy is only needed for in-browser mammoth fetching (CORS).
+    const pUrl = fileUrl;
     const src = viewerEngine === 'office'
       ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(pUrl)}`
       : `https://docs.google.com/viewer?url=${encodeURIComponent(pUrl)}&embedded=true`;
