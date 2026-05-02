@@ -129,5 +129,13 @@ class TokenData(BaseModel):
 
 
 class AdminUserUpdate(BaseModel):
+    name: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    year_of_study: Optional[int] = Field(None, ge=1, le=4)
+    semester_of_study: Optional[int] = Field(None, ge=1, le=2)
+    group: Optional[str] = None
+    specialization: Optional[str] = None
     is_admin: Optional[bool] = None
+    is_verified: Optional[bool] = None
     is_disabled: Optional[bool] = None
