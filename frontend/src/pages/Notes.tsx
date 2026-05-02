@@ -238,7 +238,8 @@ const NotesMain: React.FC = () => {
     const noteId = note.id;
     setDownloadingIds(prev => new Set(prev).add(noteId));
     try {
-      const fileName = note.file_name || `${note.course_code}_${note.course_title}.pdf`;
+      const _dlExt = note.file_url?.split('?')[0].split('.').pop()?.toLowerCase() || 'pdf';
+      const fileName = (note.file_name || `${note.course_code}_${note.course_title}`).replace(/\.[^\/\.]+$/, '') + '.' + _dlExt;
       await secureDownload(note.file_url, fileName);
     } finally {
       setDownloadingIds(prev => {
@@ -1499,7 +1500,8 @@ const NoteView: React.FC = () => {
     setIsDownloading(true);
     setDownloadProgress(0);
     try {
-      const fileName = note.file_name || `${note.course_code}_${note.course_title}.pdf`;
+      const _dlExt = note.file_url?.split('?')[0].split('.').pop()?.toLowerCase() || 'pdf';
+      const fileName = (note.file_name || `${note.course_code}_${note.course_title}`).replace(/\.[^\/\.]+$/, '') + '.' + _dlExt;
       await secureDownload(note.file_url, fileName, (progress) => {
         setDownloadProgress(progress);
       });
