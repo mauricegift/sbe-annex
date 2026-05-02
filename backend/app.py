@@ -173,7 +173,7 @@ async def proxy_file(url: str):
     import urllib.error as _err
     from fastapi.responses import Response as _Resp
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (compatible; SbeAnnexProxy/1.0)"}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
         request = _req.Request(url, headers=headers)
         with _req.urlopen(request, timeout=20) as resp:
             content = resp.read()
