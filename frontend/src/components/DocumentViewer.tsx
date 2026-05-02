@@ -31,8 +31,8 @@ const getExt = (url: string) =>
 const getFileType = (url: string) => {
   const ext = getExt(url);
   if (ext === 'pdf') return 'pdf';
-  if (ext === 'docx') return 'docx';   // mammoth (Office Open XML)
-  if (ext === 'doc')  return 'doc';    // old binary — Office Online / Google viewer
+  if (ext === 'docx') return 'docx';
+  if (ext === 'doc')  return 'doc';
   if (['xls', 'xlsx'].includes(ext)) return 'excel';
   if (['ppt', 'pptx'].includes(ext)) return 'powerpoint';
   return 'unknown';
@@ -40,12 +40,8 @@ const getFileType = (url: string) => {
 
 const getFileTypeName = (ft: string) =>
   ({
-    pdf: 'PDF Document',
-    docx: 'Word Document',
-    doc: 'Word Document',
-    excel: 'Excel Spreadsheet',
-    powerpoint: 'PowerPoint Presentation',
-    unknown: 'Document',
+    pdf: 'PDF Document', docx: 'Word Document', doc: 'Word Document',
+    excel: 'Excel Spreadsheet', powerpoint: 'PowerPoint Presentation', unknown: 'Document',
   }[ft] ?? 'Document');
 
 const getFileIcon = (ft: string) => {
@@ -57,8 +53,28 @@ const getFileIcon = (ft: string) => {
 };
 
 const BACKEND = 'https://bbmback.giftedtech.co.ke';
-const proxyUrl = (original: string) =>
-  `${BACKEND}/api/proxy-file?url=${encodeURIComponent(original)}`;
+
+/**
+ * Convert jsDelivr CDN URLs to raw.githubusercontent.com URLs.
+ * jsDelivr blocks server-side / external-crawler requests (VPS IPs, Office Online bots).
+ * raw.githubusercontent.com is accessible to all — browsers, VPS, Office Online crawlers.
+ *
+ * cdn.jsdelivr.net/gh/USER/REPO@BRANCH/PATH
+ *   → raw.githubusercontent.com/USER/REPO/BRANCH/PATH
+ */
+const toRawGitHub = (url: string): string => {
+  const m = url.match(/^https?:\/\/cdn\.jsdelivr\.net\/gh\/([^/]+\/[^@]+)@([^/]+)\/(.+)$/);
+  if (m) return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
+  return url;
+};
+
+/**
+ * Route the file through our backend proxy.
+ * The proxy fetches from raw.githubusercontent.com (200 OK from VPS),
+ * then Office Online / Google Docs fetches from our public backend endpoint.
+ */
+const proxyUrl = (url: string) =>
+  `${BACKEND}/api/proxy-file?url=${encodeURIComponent(toRawGitHub(url))}`;
 
 const ENGINE_LABELS: Record<string, string> = {
   office: 'Microsoft Office Online',
@@ -79,14 +95,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const iframeKey = useRef(0);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mammoth state — only used for .docx
   const [wordHtml, setWordHtml] = useState<string | null>(null);
   const [wordLoading, setWordLoading] = useState(false);
   const [wordError, setWordError] = useState<string | null>(null);
 
   const fileType = getFileType(fileUrl);
 
-  // ── Mammoth: render .docx only (mammoth does NOT support old binary .doc) ──
+  // ── Mammoth: .docx only — tries direct URL, raw GitHub, then proxy ──────────
   useEffect(() => {
     if (fileType !== 'docx') return;
     setWordLoading(true);
@@ -94,9 +109,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setWordError(null);
 
     const load = async () => {
-      // Try direct fetch first (works when CDN has CORS); proxy as fallback
-      const urls = [fileUrl, proxyUrl(fileUrl)];
-      for (const url of urls) {
+      const rawUrl = toRawGitHub(fileUrl);
+      // Priority: jsDelivr direct (CORS ok in browsers) → raw GitHub → backend proxy
+      const candidates = Array.from(new Set([fileUrl, rawUrl, proxyUrl(fileUrl)]));
+      for (const url of candidates) {
         try {
           const res = await fetch(url);
           if (!res.ok) continue;
@@ -108,14 +124,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           return;
         } catch { /* try next */ }
       }
-      // Both attempts failed — fall back to Office Online iframe
+      // All fetch attempts failed — fall back to Office Online via proxy
       setWordError('fallback-iframe');
       setWordLoading(false);
     };
     load();
   }, [fileUrl]);
 
-  // ── Iframe hint timer ───────────────────────────────────────────────────────
+  // ── Iframe hint timer ────────────────────────────────────────────────────────
   const clearHint = () => { if (hintTimer.current) clearTimeout(hintTimer.current); };
   const startHint = useCallback(() => {
     clearHint();
@@ -132,7 +148,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     toast({ title: `Switched to ${ENGINE_LABELS[engine]}` });
   };
 
-  // ── Share / Copy / Download ─────────────────────────────────────────────────
+  // ── Share / Copy / Download ──────────────────────────────────────────────────
   const handleShare = async () => {
     const data = { title, text: `Check out: ${title}`, url: window.location.href };
     if (navigator.share && navigator.canShare?.(data)) {
@@ -175,7 +191,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
 
-  // ── Renderers ───────────────────────────────────────────────────────────────
+  // ── Renderers ────────────────────────────────────────────────────────────────
   const renderPdf = () => (
     <div className="w-full rounded-lg overflow-hidden bg-muted" style={{ height: viewerHeight(), minHeight: 360 }}>
       <iframe
@@ -188,7 +204,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     </div>
   );
 
-  // Used for .docx (mammoth) — with fallback to iframe if mammoth fails
+  // .docx — mammoth renders inline; falls back to Office Online via proxy
   const renderDocx = () => {
     if (wordLoading) return (
       <div className="flex flex-col items-center justify-center gap-3 py-16">
@@ -213,16 +229,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <div className="doc-html-content text-sm sm:text-base" dangerouslySetInnerHTML={{ __html: wordHtml }} />
       </div>
     );
-    // Mammoth failed → silently fall through to Office Online iframe
+    // mammoth failed — fall through to Office Online (using proxy so it can fetch the file)
     return renderOfficeIframe();
   };
 
-  // Used for .doc, .pptx, .xlsx (and .docx fallback if mammoth fails)
+  // .doc / .pptx / .xlsx — Office Online or Google Docs, file served via backend proxy
+  // The proxy fetches from raw.githubusercontent.com (accessible from VPS),
+  // and Office Online / Google Docs fetches from our public backend URL.
   const renderOfficeIframe = () => {
-    // Use the direct public URL for external viewers — jsDelivr and similar CDNs
-    // are publicly accessible so Office Online/Google Docs can fetch them directly.
-    // The proxy is only needed for in-browser mammoth fetching (CORS).
-    const pUrl = fileUrl;
+    const pUrl = proxyUrl(fileUrl);
     const src = viewerEngine === 'office'
       ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(pUrl)}`
       : `https://docs.google.com/viewer?url=${encodeURIComponent(pUrl)}&embedded=true`;
@@ -311,21 +326,20 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const renderViewer = () => {
     switch (fileType) {
-      case 'pdf':         return renderPdf();
-      case 'docx':        return renderDocx();          // mammoth → fallback iframe
-      case 'doc':                                        // old binary → iframe directly
+      case 'pdf':        return renderPdf();
+      case 'docx':       return renderDocx();
+      case 'doc':
       case 'powerpoint':
-      case 'excel':       return renderOfficeIframe();
-      default:            return renderUnknown();
+      case 'excel':      return renderOfficeIframe();
+      default:           return renderUnknown();
     }
   };
 
-  // Start iframe hint for non-mammoth types on mount
   useEffect(() => {
     if (['doc', 'powerpoint', 'excel'].includes(fileType)) startHint();
   }, [fileUrl]);
 
-  // ── Toolbar ─────────────────────────────────────────────────────────────────
+  // ── Toolbar ──────────────────────────────────────────────────────────────────
   const toolbar = (
     <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
       <TooltipProvider>
