@@ -228,7 +228,8 @@ const PastPapersMain: React.FC = () => {
     const paperId = paper.id;
     setDownloadingIds(prev => new Set(prev).add(paperId));
     try {
-      const fileName = paper.file_name || `${paper.course_code}_${paper.course_title}.pdf`;
+      const _dlExt = paper.file_url?.split('?')[0].split('.').pop()?.toLowerCase() || 'pdf';
+      const fileName = (paper.file_name || `${${v}.course_code}_${${v}.course_title}`).replace(/\.[^\/.]+$/, '') + '.' + _dlExt;
       await secureDownload(paper.file_url, fileName);
     } finally {
       setDownloadingIds(prev => {
@@ -1473,7 +1474,8 @@ const PaperView: React.FC = () => {
     setIsDownloading(true);
     setDownloadProgress(0);
     try {
-      const fileName = paper.file_name || `${paper.course_code}_${paper.course_title}.pdf`;
+      const _dlExt = paper.file_url?.split('?')[0].split('.').pop()?.toLowerCase() || 'pdf';
+      const fileName = (paper.file_name || `${${v}.course_code}_${${v}.course_title}`).replace(/\.[^\/.]+$/, '') + '.' + _dlExt;
       await secureDownload(paper.file_url, fileName, (progress) => {
         setDownloadProgress(progress);
       });
