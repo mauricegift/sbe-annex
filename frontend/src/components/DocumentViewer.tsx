@@ -20,42 +20,46 @@ interface DocumentViewerProps {
   onClose?: () => void;
 }
 
-// Derive viewer height based on current screen
 const viewerHeight = () => {
   if (typeof window === 'undefined') return '80vh';
   return window.innerWidth < 640 ? 'calc(100dvh - 160px)' : 'calc(100dvh - 220px)';
 };
 
-// Resolve file extension ignoring query string
 const getExt = (url: string) =>
   (url.split('?')[0].split('.').pop() || '').toLowerCase();
 
 const getFileType = (url: string) => {
   const ext = getExt(url);
   if (ext === 'pdf') return 'pdf';
-  if (['doc', 'docx'].includes(ext)) return 'word';
+  if (ext === 'docx') return 'docx';   // mammoth (Office Open XML)
+  if (ext === 'doc')  return 'doc';    // old binary — Office Online / Google viewer
   if (['xls', 'xlsx'].includes(ext)) return 'excel';
   if (['ppt', 'pptx'].includes(ext)) return 'powerpoint';
   return 'unknown';
 };
 
 const getFileTypeName = (ft: string) =>
-  ({ pdf: 'PDF Document', word: 'Word Document', excel: 'Excel Spreadsheet', powerpoint: 'PowerPoint Presentation', unknown: 'Document' }[ft] ?? 'Document');
+  ({
+    pdf: 'PDF Document',
+    docx: 'Word Document',
+    doc: 'Word Document',
+    excel: 'Excel Spreadsheet',
+    powerpoint: 'PowerPoint Presentation',
+    unknown: 'Document',
+  }[ft] ?? 'Document');
 
 const getFileIcon = (ft: string) => {
-  if (ft === 'pdf') return <FileText className="h-10 w-10 text-red-500" />;
-  if (ft === 'word') return <FileText className="h-10 w-10 text-blue-500" />;
+  if (ft === 'pdf')  return <FileText className="h-10 w-10 text-red-500" />;
+  if (ft === 'docx' || ft === 'doc') return <FileText className="h-10 w-10 text-blue-500" />;
   if (ft === 'excel') return <FileSpreadsheet className="h-10 w-10 text-green-500" />;
   if (ft === 'powerpoint') return <FileText className="h-10 w-10 text-orange-500" />;
   return <File className="h-10 w-10 text-muted-foreground" />;
 };
 
-// ─── Backend proxy URL so external viewers get a stable public URL ─────────
 const BACKEND = 'https://bbmback.giftedtech.co.ke';
 const proxyUrl = (original: string) =>
   `${BACKEND}/api/proxy-file?url=${encodeURIComponent(original)}`;
 
-// ─── Viewer engine label map ──────────────────────────────────────────────
 const ENGINE_LABELS: Record<string, string> = {
   office: 'Microsoft Office Online',
   google: 'Google Docs Viewer',
@@ -69,33 +73,32 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  // Iframe-based viewer engine (for pptx / excel)
   const [viewerEngine, setViewerEngine] = useState<'office' | 'google'>('office');
   const [iframeLoading, setIframeLoading] = useState(true);
   const [showFallbackHint, setShowFallbackHint] = useState(false);
   const iframeKey = useRef(0);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Word/mammoth state
+  // Mammoth state — only used for .docx
   const [wordHtml, setWordHtml] = useState<string | null>(null);
   const [wordLoading, setWordLoading] = useState(false);
   const [wordError, setWordError] = useState<string | null>(null);
 
   const fileType = getFileType(fileUrl);
 
-  // ── Mammoth: render .doc / .docx locally in browser ────────────────────
+  // ── Mammoth: render .docx only (mammoth does NOT support old binary .doc) ──
   useEffect(() => {
-    if (fileType !== 'word') return;
+    if (fileType !== 'docx') return;
     setWordLoading(true);
     setWordHtml(null);
     setWordError(null);
 
     const load = async () => {
-      // Try direct fetch first; fall back to backend proxy for CORS
+      // Try direct fetch first (works when CDN has CORS); proxy as fallback
       const urls = [fileUrl, proxyUrl(fileUrl)];
       for (const url of urls) {
         try {
-          const res = await fetch(url, { mode: 'cors' });
+          const res = await fetch(url);
           if (!res.ok) continue;
           const buf = await res.arrayBuffer();
           const mammoth = (await import('mammoth')).default ?? (await import('mammoth'));
@@ -105,13 +108,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           return;
         } catch { /* try next */ }
       }
-      setWordError('Could not render the document. Please use Download or Open in browser.');
+      // Both attempts failed — fall back to Office Online iframe
+      setWordError('fallback-iframe');
       setWordLoading(false);
     };
     load();
   }, [fileUrl]);
 
-  // ── Iframe hint timer ───────────────────────────────────────────────────
+  // ── Iframe hint timer ───────────────────────────────────────────────────────
   const clearHint = () => { if (hintTimer.current) clearTimeout(hintTimer.current); };
   const startHint = useCallback(() => {
     clearHint();
@@ -128,7 +132,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     toast({ title: `Switched to ${ENGINE_LABELS[engine]}` });
   };
 
-  // ── Share / Download ────────────────────────────────────────────────────
+  // ── Share / Copy / Download ─────────────────────────────────────────────────
   const handleShare = async () => {
     const data = { title, text: `Check out: ${title}`, url: window.location.href };
     if (navigator.share && navigator.canShare?.(data)) {
@@ -171,7 +175,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
 
-  // ── Renderers ──────────────────────────────────────────────────────────
+  // ── Renderers ───────────────────────────────────────────────────────────────
   const renderPdf = () => (
     <div className="w-full rounded-lg overflow-hidden bg-muted" style={{ height: viewerHeight(), minHeight: 360 }}>
       <iframe
@@ -184,7 +188,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     </div>
   );
 
-  const renderWord = () => {
+  // Used for .docx (mammoth) — with fallback to iframe if mammoth fails
+  const renderDocx = () => {
     if (wordLoading) return (
       <div className="flex flex-col items-center justify-center gap-3 py-16">
         <LogoSpinner />
@@ -196,7 +201,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         className="w-full overflow-auto rounded-lg bg-white text-black p-4 sm:p-8"
         style={{ height: viewerHeight(), minHeight: 320 }}
       >
-        {/* Scoped typography styles */}
         <style>{`
           .doc-html-content h1,.doc-html-content h2,.doc-html-content h3{font-weight:bold;margin:.75em 0 .35em}
           .doc-html-content h1{font-size:1.6em} .doc-html-content h2{font-size:1.3em} .doc-html-content h3{font-size:1.1em}
@@ -209,25 +213,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <div className="doc-html-content text-sm sm:text-base" dangerouslySetInnerHTML={{ __html: wordHtml }} />
       </div>
     );
-    // Error state
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12 text-center px-4">
-        <AlertCircle className="h-10 w-10 text-amber-500" />
-        <p className="font-medium">Could not render this document</p>
-        <p className="text-sm text-muted-foreground max-w-sm">{wordError}</p>
-        <div className="flex flex-wrap gap-3 justify-center mt-2">
-          <Button onClick={handleDownload} disabled={isDownloading}>
-            <Download className="w-4 h-4 mr-2" />
-            {isDownloading ? `${downloadProgress || '…'}%` : 'Download File'}
-          </Button>
-          <Button variant="outline" onClick={() => window.open(fileUrl, '_blank')}>
-            <ExternalLink className="w-4 h-4 mr-2" />Open in Browser
-          </Button>
-        </div>
-      </div>
-    );
+    // Mammoth failed → silently fall through to Office Online iframe
+    return renderOfficeIframe();
   };
 
+  // Used for .doc, .pptx, .xlsx (and .docx fallback if mammoth fails)
   const renderOfficeIframe = () => {
     const pUrl = proxyUrl(fileUrl);
     const src = viewerEngine === 'office'
@@ -236,7 +226,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
     return (
       <div className="space-y-2">
-        {/* Engine switcher row */}
         <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
           <span>Viewer: <span className="font-medium text-foreground">{ENGINE_LABELS[viewerEngine]}</span></span>
           <div className="flex gap-3">
@@ -259,7 +248,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {iframeLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted z-10 gap-3">
               <LogoSpinner />
-              <p className="text-sm text-muted-foreground">Loading presentation…</p>
+              <p className="text-sm text-muted-foreground">Loading document…</p>
             </div>
           )}
 
@@ -277,7 +266,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             }}
           />
 
-          {/* Bottom hint bar */}
           {showFallbackHint && !iframeLoading && (
             <div className="absolute bottom-0 inset-x-0 bg-background/95 backdrop-blur border-t border-border px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-20">
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -320,20 +308,21 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const renderViewer = () => {
     switch (fileType) {
-      case 'pdf': return renderPdf();
-      case 'word': return renderWord();
+      case 'pdf':         return renderPdf();
+      case 'docx':        return renderDocx();          // mammoth → fallback iframe
+      case 'doc':                                        // old binary → iframe directly
       case 'powerpoint':
-      case 'excel': return renderOfficeIframe();
-      default: return renderUnknown();
+      case 'excel':       return renderOfficeIframe();
+      default:            return renderUnknown();
     }
   };
 
-  // Trigger Office iframe hint on mount for non-pdf/word
+  // Start iframe hint for non-mammoth types on mount
   useEffect(() => {
-    if (fileType === 'powerpoint' || fileType === 'excel') startHint();
+    if (['doc', 'powerpoint', 'excel'].includes(fileType)) startHint();
   }, [fileUrl]);
 
-  // ── Toolbar ────────────────────────────────────────────────────────────
+  // ── Toolbar ─────────────────────────────────────────────────────────────────
   const toolbar = (
     <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
       <TooltipProvider>
