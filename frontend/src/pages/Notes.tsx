@@ -700,7 +700,7 @@ const NotesUpload: React.FC = () => {
       const extension = file.name.split('.').pop()?.toLowerCase() || '';
       setFormData(prev => ({ 
         ...prev, 
-        course_title: `${fileName}.${extension}`,
+        course_title: fileName,
         file_name: file.name 
       }));
     } else {
