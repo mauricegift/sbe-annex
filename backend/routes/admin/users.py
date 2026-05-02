@@ -20,6 +20,8 @@ async def get_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     admin_user: dict = Depends(get_admin_user),
 ):
     """List all users (admin only)."""
@@ -69,8 +71,24 @@ async def update_user(
     if update.is_admin is not None:
         update_data["is_admin"] = update.is_admin
         update_data["role"] = "admin" if update.is_admin else "user"
+    if update.is_verified is not None:
+        update_data["is_verified"] = update.is_verified
     if update.is_disabled is not None:
         update_data["is_disabled"] = update.is_disabled
+    if update.name is not None:
+        update_data["name"] = update.name
+    if update.username is not None:
+        update_data["username"] = update.username
+    if update.email is not None:
+        update_data["email"] = update.email
+    if update.year_of_study is not None:
+        update_data["year_of_study"] = update.year_of_study
+    if update.semester_of_study is not None:
+        update_data["semester_of_study"] = update.semester_of_study
+    if update.group is not None:
+        update_data["group"] = update.group
+    if update.specialization is not None:
+        update_data["specialization"] = update.specialization
 
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No update data provided.")
