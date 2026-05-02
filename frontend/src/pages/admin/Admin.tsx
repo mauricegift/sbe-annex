@@ -796,6 +796,7 @@ const AdminDashboard: React.FC = () => {
         course_code: data.course_code,
         year_of_study: data.year_of_study,
         semester_of_study: data.semester_of_study,
+        group: data.group || '',
         specialization: data.specialization,
         file_url: data.file_url,
         thumbnail_url: data.thumbnail_url,
@@ -839,6 +840,7 @@ const AdminDashboard: React.FC = () => {
         course_code: data.course_code,
         year_of_study: data.year_of_study,
         semester_of_study: data.semester_of_study,
+        group: data.group || '',
         specialization: data.specialization,
         file_url: data.file_url,
         thumbnail_url: data.thumbnail_url,
@@ -3152,18 +3154,22 @@ const AdminDashboard: React.FC = () => {
     onSave: (userId: string, data: any) => void;
     isUpdating: boolean;
   }> = ({ user, onClose, onSave, isUpdating }) => {
-    const { allSpecializations } = useGroups();
+    const { groups: allGroups, getSpecializationsForGroup, allSpecializations } = useGroups();
     const [formData, setFormData] = useState({
       name: user.name || '',
       username: user.username || '',
       email: user.email || '',
       year_of_study: user.year_of_study || 1,
       semester_of_study: user.semester_of_study || 1,
+      group: user.group || '',
       specialization: user.specialization || '',
       is_admin: user.is_admin || false,
       is_verified: user.is_verified || false,
       is_disabled: user.is_disabled || false,
     });
+    const userSpecializations = formData.group
+      ? getSpecializationsForGroup(formData.group)
+      : allSpecializations;
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -3236,14 +3242,41 @@ const AdminDashboard: React.FC = () => {
                 </Select>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Group</Label>
+              <Select
+                value={formData.group || '__none'}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, group: v === '__none' ? '' : v, specialization: '' }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">No group</SelectItem>
+                  {allGroups.map(g => (
+                    <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {formData.year_of_study >= 3 && (
-              <SpecializationSelect
-                specializations={allSpecializations}
-                value={formData.specialization}
-                onChange={(value) => setFormData(prev => ({ ...prev, specialization: value }))}
-                label="Specialization"
-                placeholder="Select specialization"
-              />
+              <div className="space-y-2">
+                <Label>Specialization</Label>
+                <Select
+                  value={formData.specialization || '__none'}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, specialization: v === '__none' ? '' : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select specialization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">No specialization</SelectItem>
+                    {userSpecializations.map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
@@ -3295,12 +3328,13 @@ const AdminDashboard: React.FC = () => {
     onClose: () => void;
     onSave: (noteId: string, data: any) => void;
   }> = ({ note, onClose, onSave }) => {
-    const { contentSpecializations } = useGroups();
+    const { groups: noteGroups, getSpecializationsForGroup, contentSpecializations } = useGroups();
     const [formData, setFormData] = useState({
       course_title: note.course_title || '',
       course_code: note.course_code || '',
       year_of_study: note.year_of_study || 1,
       semester_of_study: note.semester_of_study || 1,
+      group: note.group || '',
       specializations: note.specialization ? (Array.isArray(note.specialization) ? note.specialization : [note.specialization]) : ['COMMON'],
       description: note.description || '',
       status: note.status || 'pending',
@@ -3308,6 +3342,9 @@ const AdminDashboard: React.FC = () => {
       file_url: note.file_url || '',
       thumbnail_url: note.thumbnail_url || '',
     });
+    const noteSpecializations = formData.group
+      ? getSpecializationsForGroup(formData.group).filter(s => s !== 'COMMON').concat(['COMMON'])
+      : contentSpecializations.filter(s => s !== 'COMMON').concat(['COMMON']);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingFile, setIsUploadingFile] = useState(false);
     const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
@@ -3391,7 +3428,7 @@ const AdminDashboard: React.FC = () => {
       e.preventDefault();
       setIsLoading(true);
       try {
-        await onSave(note.id, { ...formData, specialization: formData.specializations });
+        await onSave(note.id, { ...formData, group: formData.group, specialization: formData.specializations });
       } finally {
         setIsLoading(false);
       }
@@ -3463,11 +3500,28 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Group</Label>
+              <Select
+                value={formData.group || '__none'}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, group: v === '__none' ? '' : v, specializations: ['COMMON'] }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">No group / Common</SelectItem>
+                  {noteGroups.map(g => (
+                    <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {formData.year_of_study >= 3 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Specialization</label>
                 <ContentSpecializationMulti
-                  specializations={contentSpecializations.filter(s => s !== 'COMMON').concat(['COMMON'])}
+                  specializations={noteSpecializations}
                   value={formData.specializations || []}
                   onChange={(vals) => setFormData(prev => ({ ...prev, specializations: vals }))}
                 />
@@ -3625,12 +3679,13 @@ const AdminDashboard: React.FC = () => {
     onClose: () => void;
     onSave: (paperId: string, data: any) => void;
   }> = ({ paper, onClose, onSave }) => {
-    const { contentSpecializations } = useGroups();
+    const { groups: paperGroups, getSpecializationsForGroup, contentSpecializations } = useGroups();
     const [formData, setFormData] = useState({
       course_title: paper.course_title || '',
       course_code: paper.course_code || '',
       year_of_study: paper.year_of_study || 1,
       semester_of_study: paper.semester_of_study || 1,
+      group: paper.group || '',
       specializations: paper.specialization ? (Array.isArray(paper.specialization) ? paper.specialization : [paper.specialization]) : ['COMMON'],
       description: paper.description || '',
       status: paper.status || 'pending',
@@ -3638,6 +3693,9 @@ const AdminDashboard: React.FC = () => {
       file_url: paper.file_url || '',
       thumbnail_url: paper.thumbnail_url || '',
     });
+    const paperSpecializations = formData.group
+      ? getSpecializationsForGroup(formData.group).filter(s => s !== 'COMMON').concat(['COMMON'])
+      : contentSpecializations.filter(s => s !== 'COMMON').concat(['COMMON']);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingFile, setIsUploadingFile] = useState(false);
     const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
@@ -3721,7 +3779,7 @@ const AdminDashboard: React.FC = () => {
       e.preventDefault();
       setIsLoading(true);
       try {
-        await onSave(paper.id, { ...formData, specialization: formData.specializations });
+        await onSave(paper.id, { ...formData, group: formData.group, specialization: formData.specializations });
       } finally {
         setIsLoading(false);
       }
@@ -3793,11 +3851,28 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Group</Label>
+              <Select
+                value={formData.group || '__none'}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, group: v === '__none' ? '' : v, specializations: ['COMMON'] }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">No group / Common</SelectItem>
+                  {paperGroups.map(g => (
+                    <SelectItem key={g.code} value={g.code}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {formData.year_of_study >= 3 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Specialization</label>
                 <ContentSpecializationMulti
-                  specializations={contentSpecializations.filter(s => s !== 'COMMON').concat(['COMMON'])}
+                  specializations={paperSpecializations}
                   value={formData.specializations || []}
                   onChange={(vals) => setFormData(prev => ({ ...prev, specializations: vals }))}
                 />
