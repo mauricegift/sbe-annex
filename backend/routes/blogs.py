@@ -6,7 +6,7 @@ Filtering logic for public listing:
   - A logged-in user sees: ALL general posts (target_group=null)
     PLUS posts targeted at their own group.
   - Unauthenticated users see only general posts (target_group=null).
-  - An optional ?group= filter further narrows results.
+  - Optional ?group= and ?specialization= filters further narrow results.
 """
 import logging
 import uuid
@@ -19,6 +19,7 @@ import jwt
 
 from db.database import db
 from helpers.auth import get_current_user
+from helpers.utils import generate_short_id
 from models.review import ReviewCreate
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ async def _enrich_blog(blog: dict) -> dict:
 @router.get("", response_model=Dict[str, Any])
 async def get_blogs(
     group: Optional[str] = Query(None, description="Filter by group code (e.g. 'BBM')"),
+    specialization: Optional[str] = Query(None, description="Filter by specialization"),
     search: Optional[str] = Query(None, min_length=2),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
@@ -69,6 +71,7 @@ async def get_blogs(
         * the user is logged in and belongs to that group, OR
         * the ?group= filter explicitly matches that group.
     - Admins/super admins see ALL posts regardless of group.
+    - Optional ?specialization= further filters by target_specialization.
     """
     user_group = current_user.get("group") if current_user else None
     is_admin = current_user.get("is_admin", False) if current_user else False
@@ -99,6 +102,16 @@ async def get_blogs(
         q = {"target_group": None}
         if group:
             q["target_group"] = group.strip().upper()
+
+    # Apply specialization filter
+    if specialization:
+        spec_clause = {"$or": [{"target_specialization": None}, {"target_specialization": specialization.strip()}]}
+        if "$or" in q and "$and" not in q:
+            q = {"$and": [q, spec_clause]}
+        elif "$and" in q:
+            q["$and"].append(spec_clause)
+        else:
+            q.update({"$or": [{"target_specialization": None}, {"target_specialization": specialization.strip()}]})
 
     if search:
         search_clause = {
@@ -196,7 +209,7 @@ async def add_blog_review(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already reviewed this blog post.")
 
     review_data = {
-        "id": str(uuid.uuid4()),
+        "id": generate_short_id(),
         "document_id": blog_id,
         "document_type": "blog",
         "content": review.content,
