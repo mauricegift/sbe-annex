@@ -97,19 +97,6 @@ async def startup_db_client():
     await db.testimonials.create_index([("status", 1)])
     await db.testimonials.create_index([("created_at", -1)])
 
-    # ── Super admin bootstrap ─────────────────────────────────────────────────
-    super_admin_count = await db.users.count_documents({"role": "super_admin"})
-    if super_admin_count == 0:
-        target = await db.users.find_one({"email": "mauricegift045@gmail.com"})
-        if target:
-            await db.users.update_one(
-                {"email": "mauricegift045@gmail.com"},
-                {"$set": {"role": "super_admin", "is_admin": True, "is_verified": True}},
-            )
-            logger.info("Promoted mauricegift045@gmail.com to super_admin.")
-    elif super_admin_count > 1:
-        logger.warning("Multiple super_admin accounts detected — database may need cleanup.")
-
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
