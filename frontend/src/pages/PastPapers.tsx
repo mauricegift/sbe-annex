@@ -668,7 +668,7 @@ const PastPapersUpload: React.FC = () => {
       const extension = getFileExtension(file.name);
       setFormData(prev => ({ 
         ...prev, 
-        course_title: `${fileName}.${extension}`,
+        course_title: fileName,
         file_name: file.name 
       }));
     } else {
