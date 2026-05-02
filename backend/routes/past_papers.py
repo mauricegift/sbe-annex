@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from db.database import db
 from helpers.auth import get_current_user
+from helpers.utils import generate_short_id
 from models.document import DocumentUpload, Status
 from models.review import ReviewCreate
 
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/past-papers", tags=["past_papers"])
 @router.post("/upload", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
 async def upload_past_paper(paper: DocumentUpload, current_user: dict = Depends(get_current_user)):
     paper_data = {
-        "id": str(uuid.uuid4()),
+        "id": generate_short_id(),
         "course_title": paper.course_title,
         "course_code": paper.course_code,
         "year_of_study": paper.year_of_study,
