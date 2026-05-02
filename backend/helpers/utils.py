@@ -23,3 +23,11 @@ def get_greeting() -> str:
     if 17 <= hour < 21:
         return "Good evening"
     return "Good night"
+
+
+def generate_short_id(length: int = 10) -> str:
+    """Generate a short URL-safe alphanumeric ID (lowercase letters + digits)."""
+    import string
+    alphabet = string.ascii_lowercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
