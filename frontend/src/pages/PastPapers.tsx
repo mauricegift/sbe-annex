@@ -672,14 +672,7 @@ const PastPapersUpload: React.FC = () => {
         file_name: file.name 
       }));
     } else {
-      // Add extension to existing title
-      const extension = getFileExtension(file.name);
-      const titleWithoutExt = formData.course_title.replace(/\.[^/.]+$/, "");
-      setFormData(prev => ({ 
-        ...prev, 
-        course_title: `${titleWithoutExt}.${extension}`,
-        file_name: file.name 
-      }));
+      setFormData(prev => ({ ...prev, file_name: file.name }));
     }
     
     return true;
