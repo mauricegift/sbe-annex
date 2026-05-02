@@ -56,8 +56,6 @@ async def check_first_user():
 async def register(user: UserCreate, request: Request):
     """
     Register a new user.
-    - First ever user becomes super_admin automatically.
-    - If mauricegift045@gmail.com already exists and no super_admin exists, they get promoted on startup.
     - Sends email verification LINK or SMS OTP based on chosen method.
     """
     # Check uniqueness
